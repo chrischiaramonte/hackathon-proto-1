@@ -9,6 +9,7 @@ export const MAX_RECORDING_MS = 5000;
 
 interface Options {
   target: string | undefined;
+  lessonId?: string;
   /** Frames are ignored unless enabled (e.g. outside the practice phase). */
   enabled: boolean;
   mode: CaptureMode;
@@ -38,14 +39,14 @@ export interface Recognizer {
  * in flight at a time; a window that is not accepted is silent, so the user
  * is never told "wrong" while still mid-sign.
  */
-export function useRecognizer({ target, enabled, mode, onAccepted }: Options): Recognizer {
+export function useRecognizer({ target, lessonId, enabled, mode, onAccepted }: Options): Recognizer {
   const segmenter = useRef(new AttemptSegmenter());
   const generation = useRef(0);
   const inFlight = useRef(false);
   const queued = useRef<Segment | null>(null);
   const recordingRef = useRef<{ frames: LandmarkFrame[]; startT: number } | null>(null);
   const signingRef = useRef(false);
-  const latest = useRef({ target, enabled, mode, onAccepted });
+  const latest = useRef({ target, lessonId, enabled, mode, onAccepted });
 
   const [signing, setSigning] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -55,7 +56,7 @@ export function useRecognizer({ target, enabled, mode, onAccepted }: Options): R
   const [error, setError] = useState<ApiError | null>(null);
 
   useEffect(() => {
-    latest.current = { target, enabled, mode, onAccepted };
+    latest.current = { target, lessonId, enabled, mode, onAccepted };
   });
 
   // New sign, mode or phase: start clean and ignore answers still in flight.
@@ -70,7 +71,7 @@ export function useRecognizer({ target, enabled, mode, onAccepted }: Options): R
     setLastResult(null);
     setMisses(0);
     setError(null);
-  }, [target, enabled, mode]);
+  }, [target, lessonId, enabled, mode]);
 
   const submit = useCallback((segment: Segment) => {
     const sign = latest.current.target;
@@ -83,7 +84,7 @@ export function useRecognizer({ target, enabled, mode, onAccepted }: Options): R
     inFlight.current = true;
     setChecking(true);
     const gen = generation.current;
-    recognize(sign, segment.frames)
+    recognize(sign, segment.frames, latest.current.lessonId)
       .then((result) => {
         if (gen !== generation.current) return;
         setError(null);

@@ -6,6 +6,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { attribution, lessons, signLabel } from '../content';
 import type { Progress } from '../lib/progress';
 import styles from './Dashboard.module.css';
+import type { AccountProfile } from '../lib/accountApi';
 
 /** Review needs a few learned signs to be worth it. */
 const MIN_REVIEW_SIGNS = 3;
@@ -17,9 +18,11 @@ interface Props {
   onResume: () => void;
   onReview: () => void;
   onReset: () => void;
+  account: AccountProfile | null;
+  onManageAccount: () => void;
 }
 
-export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onReview, onReset }: Props) {
+export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onReview, onReset, account, onManageAccount }: Props) {
   const [confirmReset, setConfirmReset] = useState(false);
   const next = lessons.find((lesson) => !progress.completed[lesson.id]);
   const active = progress.active;
@@ -29,9 +32,10 @@ export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onRev
     <div className={styles.page}>
       <header className={styles.topbar}>
         <Logo />
+        <Button variant="secondary" onClick={onManageAccount}>{account ? account.displayName : 'Leaderboard'}</Button>
         <div className={styles.stats}>
-          <span className={styles.stat} title="Total XP">
-            <IconBolt className={styles.bolt} /> {progress.xp} XP
+          <span className={styles.stat} title={account ? 'Server tracked leaderboard XP' : 'XP on this device'}>
+            <IconBolt className={styles.bolt} /> {account ? account.xp : progress.xp} XP
           </span>
           <span className={styles.stat} title="Signs learned">
             <IconHand /> {progress.learned.length} signs
