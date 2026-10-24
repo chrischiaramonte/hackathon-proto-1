@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../components/Button';
-import { accountApi, type AccountProfile, type Friend, type LeaderboardRow } from '../lib/accountApi';
+import { accountApi, type AccountProfile, type Friend } from '../lib/accountApi';
 
 interface Props { account: AccountProfile; onClose: () => void; onAccountChange: (a: AccountProfile) => void; onSignOut: () => void; onDelete: () => void }
 export function AccountCenter({ account, onClose, onAccountChange, onSignOut, onDelete }: Props) {
-  const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [newFriend, setNewFriend] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const refresh = async () => {
-    try { const [board, list] = await Promise.all([accountApi.leaderboard(), accountApi.friends()]); setRows(board); setFriends(list); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not load leaderboard'); }
+    try { setFriends(await accountApi.friends()); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not load friends'); }
   };
   useEffect(() => { void refresh(); }, []);
   const updatePrivacy = async (visible: boolean, friendsOnly: boolean) => {
@@ -41,9 +40,6 @@ export function AccountCenter({ account, onClose, onAccountChange, onSignOut, on
         {f.displayName} · {f.accepted ? 'friend' : f.incoming ? <button onClick={() => void accountApi.requestFriend(f.displayName).then(refresh)}>Accept request</button> : 'request sent'}
         {f.accepted && <button style={{ marginLeft: 8 }} onClick={() => void accountApi.removeFriend(f.displayName).then(refresh)}>Remove</button>}
       </li>)}</ul>
-      {account.leaderboardVisible && <><h3 style={heading}>{account.friendsOnly ? 'Friends leaderboard' : 'Top learners'}</h3>
-        {rows.length ? <ol style={{ maxHeight: 210, overflow: 'auto', paddingLeft: 28 }}>{rows.map(r => <li key={`${r.rank}-${r.displayName}`} style={{ fontWeight: r.you ? 900 : 600 }}>{r.displayName} — {r.xp} XP{r.you ? ' (you)' : ''}</li>)}</ol> : <p>No visible scores yet. Add a friend or opt in to appear here.</p>}
-      </>}
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
       <footer style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 20 }}><Button variant="secondary" onClick={onSignOut}>Sign out</Button><Button variant="danger" onClick={() => { if (window.confirm('Delete your account and all server XP history? This cannot be undone.')) onDelete(); }}>Delete account</Button></footer>
     </section>

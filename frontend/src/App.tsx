@@ -48,6 +48,7 @@ export function App() {
   const [screen, setScreen] = useState<Screen>(initial.screen);
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [accountPanel, setAccountPanel] = useState(false);
+  const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
 
   useEffect(() => { void accountApi.me().then(setAccount).catch(() => setAccount(null)); }, []);
   useEffect(() => {
@@ -124,9 +125,10 @@ export function App() {
       }}
       account={account}
       onManageAccount={() => setAccountPanel(true)}
+      leaderboardRefresh={leaderboardRefresh}
     />
     {accountPanel && (account
-      ? <AccountCenter account={account} onClose={() => setAccountPanel(false)} onAccountChange={setAccount}
+      ? <AccountCenter account={account} onClose={() => { setAccountPanel(false); setLeaderboardRefresh((n) => n + 1); }} onAccountChange={setAccount}
           onSignOut={() => { void accountApi.logout().finally(() => { setAccount(null); setAccountPanel(false); }); }}
           onDelete={() => { void accountApi.deleteAccount().finally(() => { setAccount(null); setAccountPanel(false); }); }} />
       : <AccountAccess onGuest={() => setAccountPanel(false)} onSubmit={async (name, password, register) => {
