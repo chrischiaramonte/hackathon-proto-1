@@ -1,0 +1,36 @@
+[project]
+name = "asl-recognition-backend"
+version = "0.1.0"
+description = "FastAPI service that scores ASL sign attempts with the Kaggle ASL Signs 1st-place model"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "ai-edge-litert>=2.0",
+    # mediapipe 0.10.21 (validation extra) still needs numpy 1.x.
+    "numpy>=1.26,<2",
+]
+
+[project.optional-dependencies]
+# Offline tooling: fetch PopSign videos, extract landmarks with MediaPipe
+# Holistic (Python), evaluate the model, and transcode demo clips.
+# 0.10.21 is the last mediapipe release that still ships the legacy Holistic
+# solution the browser package uses.
+validation = [
+    "mediapipe==0.10.21",
+    "opencv-python-headless>=4.9",
+    "imageio-ffmpeg>=0.5",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,112 @@
+/* Design tokens and base styles. Components use CSS modules on top of these. */
+:root {
+  --bg: #f5f6fb;
+  --surface: #ffffff;
+  --surface-2: #eef0f7;
+  --ink: #1c2140;
+  --ink-2: #4a5073;
+  --muted: #7d83a3;
+  --line: #e1e4ef;
+
+  --brand: #5a48f0;
+  --brand-dark: #3f2fc4;
+  --brand-soft: #ebe8ff;
+  --success: #1fae6b;
+  --success-dark: #158552;
+  --success-soft: #e1f6ec;
+  --danger: #ef4f57;
+  --danger-dark: #c43941;
+  --danger-soft: #fde7e8;
+  --warning: #f2a01d;
+  --warning-soft: #fff3dc;
+  --xp: #ffb400;
+
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --shadow: 0 1px 2px rgb(28 33 64 / 6%), 0 8px 24px rgb(28 33 64 / 8%);
+  --font: 'Nunito Variable', ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12142a;
+    --surface: #1b1e3a;
+    --surface-2: #252950;
+    --ink: #f1f2fb;
+    --ink-2: #c3c6e2;
+    --muted: #8d92b8;
+    --line: #2f3460;
+    --brand: #7d6dff;
+    --brand-dark: #5546d6;
+    --brand-soft: #2b2a5e;
+    --success-soft: #133c2c;
+    --danger-soft: #45202a;
+    --warning-soft: #44361a;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--brand);
+}
+
+:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

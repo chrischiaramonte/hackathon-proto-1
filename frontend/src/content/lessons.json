@@ -1,0 +1,53 @@
+{
+  "lessons": [
+    {
+      "id": "first-words",
+      "title": "First words",
+      "description": "Greet people and mind your manners.",
+      "signs": ["hello", "please", "thankyou", "yes", "no", "bye"]
+    },
+    {
+      "id": "family",
+      "title": "Family",
+      "description": "Name the people closest to you.",
+      "signs": ["mom", "dad", "grandma", "grandpa", "home"]
+    },
+    {
+      "id": "mealtime",
+      "title": "Mealtime",
+      "description": "Ask for something to eat or drink.",
+      "signs": ["food", "drink", "water", "milk", "hungry", "thirsty"]
+    },
+    {
+      "id": "feelings",
+      "title": "Feelings & questions",
+      "description": "Say how you feel and ask simple questions.",
+      "signs": ["happy", "sad", "sick", "like", "where", "who"]
+    }
+  ],
+  "signs": {
+    "hello": { "label": "Hello" },
+    "please": { "label": "Please" },
+    "thankyou": { "label": "Thank you" },
+    "yes": { "label": "Yes" },
+    "no": { "label": "No" },
+    "bye": { "label": "Bye" },
+    "mom": { "label": "Mom" },
+    "dad": { "label": "Dad" },
+    "grandma": { "label": "Grandma" },
+    "grandpa": { "label": "Grandpa" },
+    "home": { "label": "Home" },
+    "food": { "label": "Food" },
+    "drink": { "label": "Drink" },
+    "water": { "label": "Water" },
+    "milk": { "label": "Milk" },
+    "hungry": { "label": "Hungry" },
+    "thirsty": { "label": "Thirsty" },
+    "happy": { "label": "Happy" },
+    "sad": { "label": "Sad" },
+    "sick": { "label": "Sick" },
+    "like": { "label": "Like" },
+    "where": { "label": "Where?" },
+    "who": { "label": "Who?" }
+  }
+}

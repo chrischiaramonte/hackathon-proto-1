@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sL \"https://huggingface.co/api/models/sign/kaggle-asl-signs-1st-place\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -sL \"https://huggingface.co/api/models/sign/kaggle-asl-signs-1st-place/tree/main?recursive=true\")"
+    ]
+  }
+}

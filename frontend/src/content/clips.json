@@ -1,0 +1,242 @@
+{
+  "attribution": {
+    "dataset": "PopSign ASL v1.0",
+    "creators": "Thad Starner et al., Georgia Institute of Technology and Deaf Professional Arts Network",
+    "url": "https://signdata.cc.gatech.edu/view/datasets/popsign_v1_0/",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Trimmed to the sign, scaled to 360x640, re-encoded."
+  },
+  "clips": {
+    "bye": [
+      {
+        "src": "/signs/bye-1.mp4",
+        "source": "gtsignstudy4a.8033-bye-2023_01_29_12_06_38.497-0.mp4"
+      },
+      {
+        "src": "/signs/bye-2.mp4",
+        "source": "gtsignstudy4a.8037-bye-2023_01_28_13_37_26.760-0.mp4"
+      }
+    ],
+    "dad": [
+      {
+        "src": "/signs/dad-1.mp4",
+        "source": "gtsignstudy4a.8033-dad-2023_01_28_23_52_18.852-0.mp4"
+      },
+      {
+        "src": "/signs/dad-2.mp4",
+        "source": "gtsignstudy4a.8036-dad-2023_01_24_23_26_44.614-0.mp4"
+      }
+    ],
+    "drink": [
+      {
+        "src": "/signs/drink-1.mp4",
+        "source": "gtsignstudy4a.8033-drink-2023_01_29_12_26_13.234-0.mp4"
+      },
+      {
+        "src": "/signs/drink-2.mp4",
+        "source": "gtsignstudy4a.8032-drink-2023_01_27_11_52_11.172-0.mp4"
+      }
+    ],
+    "food": [
+      {
+        "src": "/signs/food-1.mp4",
+        "source": "gtsignstudy4a.8032-food-2023_01_29_12_34_15.791-0.mp4"
+      },
+      {
+        "src": "/signs/food-2.mp4",
+        "source": "gtsignstudy4a.8036-food-2023_01_23_16_47_33.285-0.mp4"
+      }
+    ],
+    "grandma": [
+      {
+        "src": "/signs/grandma-1.mp4",
+        "source": "gtsignstudy4a.8037-grandma-2023_01_28_15_55_19.971-0.mp4"
+      },
+      {
+        "src": "/signs/grandma-2.mp4",
+        "source": "gtsignstudy4a.8036-grandma-2023_01_25_19_27_33.236-0.mp4"
+      }
+    ],
+    "grandpa": [
+      {
+        "src": "/signs/grandpa-1.mp4",
+        "source": "gtsignstudy4a.8033-grandpa-2023_01_29_00_07_54.858-0.mp4"
+      },
+      {
+        "src": "/signs/grandpa-2.mp4",
+        "source": "gtsignstudy4a.8035-grandpa-2023_02_01_14_32_45.900-1.mp4"
+      }
+    ],
+    "happy": [
+      {
+        "src": "/signs/happy-1.mp4",
+        "source": "gtsignstudy4a.8032-happy-2023_01_24_20_54_41.604-0.mp4"
+      },
+      {
+        "src": "/signs/happy-2.mp4",
+        "source": "gtsignstudy4a.8033-happy-2023_01_29_00_42_24.443-0.mp4"
+      }
+    ],
+    "hello": [
+      {
+        "src": "/signs/hello-1.mp4",
+        "source": "gtsignstudy4a.8033-hello-2023_01_29_00_03_54.560-0.mp4"
+      },
+      {
+        "src": "/signs/hello-2.mp4",
+        "source": "gtsignstudy4a.8037-hello-2023_01_27_19_39_34.638-0.mp4"
+      }
+    ],
+    "home": [
+      {
+        "src": "/signs/home-1.mp4",
+        "source": "gtsignstudy4a.8033-home-2023_01_29_12_48_34.390-0.mp4"
+      },
+      {
+        "src": "/signs/home-2.mp4",
+        "source": "gtsignstudy4a.8035-home-2023_01_29_11_33_59.763-0.mp4"
+      }
+    ],
+    "hungry": [
+      {
+        "src": "/signs/hungry-1.mp4",
+        "source": "gtsignstudy4a.8033-hungry-2023_01_29_13_27_11.587-0.mp4"
+      },
+      {
+        "src": "/signs/hungry-2.mp4",
+        "source": "gtsignstudy4a.8032-hungry-2023_01_29_12_12_43.939-0.mp4"
+      }
+    ],
+    "like": [
+      {
+        "src": "/signs/like-1.mp4",
+        "source": "gtsignstudy4a.8033-like-2023_01_29_12_48_34.390-0.mp4"
+      },
+      {
+        "src": "/signs/like-2.mp4",
+        "source": "gtsignstudy4a.8035-like-2023_02_01_14_33_39.878-0.mp4"
+      }
+    ],
+    "milk": [
+      {
+        "src": "/signs/milk-1.mp4",
+        "source": "gtsignstudy4a.8033-milk-2023_01_30_01_04_06.212-0.mp4"
+      },
+      {
+        "src": "/signs/milk-2.mp4",
+        "source": "gtsignstudy4a.8037-milk-2023_01_28_15_00_52.673-0.mp4"
+      }
+    ],
+    "mom": [
+      {
+        "src": "/signs/mom-1.mp4",
+        "source": "gtsignstudy4a.8032-mom-2023_01_25_18_31_46.543-0.mp4"
+      },
+      {
+        "src": "/signs/mom-2.mp4",
+        "source": "gtsignstudy4a.8038-mom-2023_01_25_19_20_18.994-0.mp4"
+      }
+    ],
+    "no": [
+      {
+        "src": "/signs/no-1.mp4",
+        "source": "gtsignstudy4a.8036-no-2023_01_28_13_29_13.886-0.mp4"
+      },
+      {
+        "src": "/signs/no-2.mp4",
+        "source": "gtsignstudy4a.8035-no-2023_02_01_14_10_45.591-0.mp4"
+      }
+    ],
+    "please": [
+      {
+        "src": "/signs/please-1.mp4",
+        "source": "gtsignstudy4a.8036-please-2023_01_25_19_22_32.260-0.mp4"
+      },
+      {
+        "src": "/signs/please-2.mp4",
+        "source": "gtsignstudy4a.8038-please-2023_01_25_14_26_50.663-0.mp4"
+      }
+    ],
+    "sad": [
+      {
+        "src": "/signs/sad-1.mp4",
+        "source": "gtsignstudy4a.8038-sad-2023_01_23_19_12_03.453-0.mp4"
+      },
+      {
+        "src": "/signs/sad-2.mp4",
+        "source": "gtsignstudy4a.8036-sad-2023_01_25_20_47_55.596-0.mp4"
+      }
+    ],
+    "sick": [
+      {
+        "src": "/signs/sick-1.mp4",
+        "source": "gtsignstudy4a.8033-sick-2023_01_29_12_24_40.138-0.mp4"
+      },
+      {
+        "src": "/signs/sick-2.mp4",
+        "source": "gtsignstudy4a.8039-sick-2023_01_25_23_10_35.170-0.mp4"
+      }
+    ],
+    "thankyou": [
+      {
+        "src": "/signs/thankyou-1.mp4",
+        "source": "gtsignstudy4a.8038-thankyou-2023_01_25_17_05_22.780-0.mp4"
+      },
+      {
+        "src": "/signs/thankyou-2.mp4",
+        "source": "gtsignstudy4a.8039-thankyou-2023_01_22_13_18_14.416-0.mp4"
+      }
+    ],
+    "thirsty": [
+      {
+        "src": "/signs/thirsty-1.mp4",
+        "source": "gtsignstudy4a.8037-thirsty-2023_01_28_15_49_10.124-0.mp4"
+      },
+      {
+        "src": "/signs/thirsty-2.mp4",
+        "source": "gtsignstudy4a.8031-thirsty-2023_01_25_18_12_30.899-0.mp4"
+      }
+    ],
+    "water": [
+      {
+        "src": "/signs/water-1.mp4",
+        "source": "gtsignstudy4a.8033-water-2023_01_29_12_19_21.362-0.mp4"
+      },
+      {
+        "src": "/signs/water-2.mp4",
+        "source": "gtsignstudy4a.8035-water-2023_01_29_11_38_44.795-0.mp4"
+      }
+    ],
+    "where": [
+      {
+        "src": "/signs/where-1.mp4",
+        "source": "gtsignstudy4a.8036-where-2023_01_25_19_52_26.157-0.mp4"
+      },
+      {
+        "src": "/signs/where-2.mp4",
+        "source": "gtsignstudy4a.8033-where-2023_01_29_11_33_22.396-0.mp4"
+      }
+    ],
+    "who": [
+      {
+        "src": "/signs/who-1.mp4",
+        "source": "gtsignstudy4a.8037-who-2023_01_25_17_00_46.928-0.mp4"
+      },
+      {
+        "src": "/signs/who-2.mp4",
+        "source": "gtsignstudy4a.8033-who-2023_01_29_11_47_07.021-0.mp4"
+      }
+    ],
+    "yes": [
+      {
+        "src": "/signs/yes-1.mp4",
+        "source": "gtsignstudy4a.8033-yes-2023_01_29_12_05_36.159-0.mp4"
+      },
+      {
+        "src": "/signs/yes-2.mp4",
+        "source": "gtsignstudy4a.8039-yes-2023_01_25_22_22_11.995-0.mp4"
+      }
+    ]
+  }
+}
