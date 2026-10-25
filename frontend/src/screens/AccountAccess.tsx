@@ -40,7 +40,8 @@ export function AccountAccess({ onSubmit, onGuest }: Props) {
       <p style={{ marginTop: 16 }}>{register ? 'Already have an account?' : 'New to cosign?'}{' '}
         <button type="button" onClick={() => { setRegister(!register); setError(''); }} style={linkButton}>{register ? 'Sign in' : 'Create account'}</button>
       </p>
-      <Button variant="ghost" onClick={onGuest}>Continue without an account</Button>
+      {/* No side padding: a text-only button lines up with the text above it. */}
+      <Button variant="ghost" onClick={onGuest} style={{ paddingInline: 0 }}>Continue without an account</Button>
     </main>
   </div>;
 }
