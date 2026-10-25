@@ -36,7 +36,12 @@ export function loadProgress(storage: Store = localStorage): Progress {
     if (isLessonRecord(record)) completed[id] = record;
   }
   // A malformed in-progress lesson is dropped without losing the rest.
-  return { xp: data.xp, completed, learned: data.learned, active: isLessonState(data.active) ? data.active : null };
+  return {
+    xp: data.xp,
+    completed,
+    learned: data.learned,
+    active: isLessonState(data.active) ? normalizeLessonState(data.active) : null,
+  };
 }
 
 export function saveProgress(progress: Progress, storage: Store = localStorage): void {
@@ -101,6 +106,25 @@ function isLessonState(v: unknown): v is LessonState {
     isCount(v.xp) &&
     typeof v.replay === 'boolean' &&
     typeof v.scored === 'boolean' &&
-    isCount(v.startedAt)
+    isCount(v.startedAt) &&
+    (v.signedOnce === undefined || isStringArray(v.signedOnce)) &&
+    (v.reviewPhase === undefined || typeof v.reviewPhase === 'boolean') &&
+    (v.questionPhases === undefined || (
+      isRecord(v.questionPhases) &&
+      Object.values(v.questionPhases).every((phase) => phase === 'sign' || phase === 'translation')
+    ))
   );
+}
+
+/** Upgrade saved lessons from the old queue to the opening vocab pass plus shuffled review. */
+function normalizeLessonState(state: LessonState): LessonState {
+  if (state.reviewPhase !== undefined) return state;
+  return {
+    ...state,
+    queue: [...state.queue, ...state.done],
+    done: [],
+    signedOnce: [],
+    reviewPhase: false,
+    questionPhases: {},
+  };
 }
