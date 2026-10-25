@@ -64,18 +64,23 @@ export function CompleteScreen({ summary, title, onDone, onReplay }: Props) {
           <div className={styles.stats}>
             <div className={`${styles.stat} ${styles.xp}`}>
               <span className={styles.statLabel}>XP earned</span>
-              <span className={styles.statValue}>
-                <IconBolt /> {summary.totalXp}
-              </span>
-              {summary.bonusXp > 0 && <span className={styles.statSub}>incl. +{summary.bonusXp} completion bonus</span>}
+              <div className={styles.statBody}>
+                <span className={styles.statValue}>
+                  <IconBolt /> {summary.totalXp}
+                </span>
+              </div>
             </div>
             <div className={`${styles.stat} ${styles.accuracy}`}>
               <span className={styles.statLabel}>First try</span>
-              <span className={styles.statValue}>{Math.round(summary.accuracy * 100)}%</span>
+              <div className={styles.statBody}>
+                <span className={styles.statValue}>{Math.round(summary.accuracy * 100)}%</span>
+              </div>
             </div>
             <div className={`${styles.stat} ${styles.time}`}>
               <span className={styles.statLabel}>Time</span>
-              <span className={styles.statValue}>{formatDuration(summary.durationMs)}</span>
+              <div className={styles.statBody}>
+                <span className={styles.statValue}>{formatDuration(summary.durationMs)}</span>
+              </div>
             </div>
           </div>
         )}

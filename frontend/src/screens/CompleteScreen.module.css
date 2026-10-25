@@ -66,22 +66,28 @@
 .stat {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.85rem 0.5rem;
   border: 2px solid var(--stat-color);
   border-radius: var(--radius);
+  overflow: hidden;
 }
 
 .statLabel {
-  margin: -0.85rem -0.5rem 0.2rem;
-  padding: 0.25rem;
-  border-radius: calc(var(--radius) - 4px) calc(var(--radius) - 4px) 0 0;
+  padding: 0.4rem 0.5rem;
   background: var(--stat-color);
   color: #fff;
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.statBody {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 5.5rem;
+  padding: 0.75rem 0.5rem;
 }
 
 .statValue {
@@ -99,14 +105,9 @@
   color: var(--ink);
 }
 
-.statSub {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
 .xp {
-  --stat-color: #8a6100;
+  /* Deeper gold than --xp so white label text stays readable. */
+  --stat-color: #9a6b00;
 }
 
 .accuracy {
