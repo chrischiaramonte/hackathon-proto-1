@@ -16,7 +16,7 @@ import { playCorrect, playWrong } from '../lib/sounds';
 import styles from './LessonScreen.module.css';
 
 /** How long the learner has to sign before it counts as a miss. */
-const PRACTICE_MS = 20_000;
+const PRACTICE_MS = 10_000;
 
 type Phase =
   | { name: 'learn' }
