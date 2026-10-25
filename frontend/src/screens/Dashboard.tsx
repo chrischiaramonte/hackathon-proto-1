@@ -114,6 +114,9 @@ export function Dashboard({
   const completedCount = lessons.filter(
     (lesson) => progress.completed[lesson.id],
   ).length;
+  const learner = account?.displayName;
+  const subtitle = (phrase: string) =>
+    learner ? `${learner}, ${phrase}` : phrase;
 
   useEffect(() => {
     if (tab !== "leaderboard") return;
@@ -225,14 +228,9 @@ export function Dashboard({
                 </h1>
               </div>
               {!account ? (
-                <div className={styles.leaderboardEmpty}>
-                  <p>
-                    Sign in to see the leaderboard and earn your place on it.
-                  </p>
-                  <Button variant="secondary" onClick={onManageAccount}>
-                    Sign in or create an account
-                  </Button>
-                </div>
+                <p className={styles.leaderboardEmpty}>
+                  Sign in to see the leaderboard and earn your place on it.
+                </p>
               ) : leaderboardLoading ? (
                 <p className={styles.leaderboardEmpty} role="status">
                   Loading leaderboard…
@@ -279,7 +277,9 @@ export function Dashboard({
             <section className={styles.hero}>
               {active && activeTitle ? (
                 <>
-                  <p className={styles.kicker}>Pick up where you left off</p>
+                  <p className={styles.kicker}>
+                    {subtitle("Pick up where you left off")}
+                  </p>
                   <h1 className={styles.heroTitle}>{activeTitle}</h1>
                   <div className={styles.heroProgress}>
                     <ProgressBar
@@ -299,10 +299,10 @@ export function Dashboard({
                 <>
                   <p className={styles.kicker}>
                     {completedCount === 0
-                      ? account
-                        ? `Hello ${account.displayName}`
+                      ? learner
+                        ? `Hello ${learner}`
                         : "Learn ASL together"
-                      : "Keep going"}
+                      : subtitle("Keep going")}
                   </p>
                   <h1 className={styles.heroTitle}>
                     {next
