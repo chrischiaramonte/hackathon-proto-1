@@ -15,7 +15,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from app.schemas import CamelModel
 
-DB_PATH = Path(os.getenv("SIGNSPARK_DB", Path(__file__).parents[1] / "data" / "signspark.sqlite3"))
+DB_PATH = Path(os.getenv("COSIGN_DB", Path(__file__).parents[1] / "data" / "cosign.sqlite3"))
 router = APIRouter(prefix="/api/account", tags=["accounts"])
 CURRICULUM = {
     "first-words": {"hello", "please", "thankyou", "yes", "no", "bye"},
@@ -101,7 +101,7 @@ def _session_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def current_user(session: str | None = Cookie(default=None, alias="signspark_session")) -> sqlite3.Row:
+def current_user(session: str | None = Cookie(default=None, alias="cosign_session")) -> sqlite3.Row:
     if not session:
         raise HTTPException(401, "Sign in to use accounts")
     now = datetime.now(timezone.utc).isoformat()
@@ -112,7 +112,7 @@ def current_user(session: str | None = Cookie(default=None, alias="signspark_ses
     return row
 
 
-def optional_user(session: str | None = Cookie(default=None, alias="signspark_session")) -> sqlite3.Row | None:
+def optional_user(session: str | None = Cookie(default=None, alias="cosign_session")) -> sqlite3.Row | None:
     if not session:
         return None
     try:
@@ -126,7 +126,7 @@ def _issue_session(user_id: int, response: Response) -> None:
     expiry = datetime.now(timezone.utc) + timedelta(days=30)
     with connect() as db:
         db.execute("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)", (_session_hash(token), user_id, expiry.isoformat()))
-    response.set_cookie("signspark_session", token, httponly=True, secure=os.getenv("SIGNSPARK_COOKIE_SECURE") == "1", samesite="strict", max_age=30 * 86400, path="/")
+    response.set_cookie("cosign_session", token, httponly=True, secure=os.getenv("COSIGN_COOKIE_SECURE") == "1", samesite="strict", max_age=30 * 86400, path="/")
 
 
 def _profile(db: sqlite3.Connection, user_id: int) -> dict:
@@ -166,11 +166,11 @@ def me(user: sqlite3.Row = Depends(current_user)):
 
 
 @router.post("/logout")
-def logout(response: Response, session: str | None = Cookie(default=None, alias="signspark_session")):
+def logout(response: Response, session: str | None = Cookie(default=None, alias="cosign_session")):
     if session:
         with connect() as db:
             db.execute("DELETE FROM sessions WHERE token_hash=?", (_session_hash(session),))
-    response.delete_cookie("signspark_session", path="/", httponly=True, samesite="strict")
+    response.delete_cookie("cosign_session", path="/", httponly=True, samesite="strict")
     return {"ok": True}
 
 
@@ -185,7 +185,7 @@ def privacy(body: PrivacySettings, user: sqlite3.Row = Depends(current_user)):
 def delete_account(response: Response, user: sqlite3.Row = Depends(current_user)):
     with connect() as db:
         db.execute("DELETE FROM users WHERE id=?", (user["id"],))
-    response.delete_cookie("signspark_session", path="/", httponly=True, samesite="strict")
+    response.delete_cookie("cosign_session", path="/", httponly=True, samesite="strict")
     return {"ok": True}
 
 

@@ -1,4 +1,4 @@
-# SignSpark: learn ASL with your webcam
+# CoSign: learn ASL with your webcam
 
 A Duolingo-style web app for family and friends of Deaf people. Watch a Deaf
 signer demonstrate a sign, sign it back to your webcam, and a pretrained
@@ -84,12 +84,12 @@ an account or sign in. New accounts are private by default. Learners can opt
 into the global leaderboard or limit their visible rank to accepted friends;
 friend requests use exact display names. Password hashes (PBKDF2), opaque
 HTTP-only sessions, XP events and friend relationships are stored in
-`backend/data/signspark.sqlite3` (override with `SIGNSPARK_DB`). The server
+`backend/data/cosign.sqlite3` (override with `COSIGN_DB`). The server
 awards leaderboard XP only after an accepted recognition result or validated
 translation answer, with repeat awards of 10, 5, 2, then 0 XP per sign and
 lesson. Account deletion cascades through sessions, XP and friend links.
 Password recovery is not available yet. Production deployments must use HTTPS
-and set `SIGNSPARK_COOKIE_SECURE=1`.
+and set `COSIGN_COOKIE_SECURE=1`.
 
 **When things go wrong:**
 

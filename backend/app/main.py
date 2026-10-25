@@ -71,7 +71,7 @@ def recognize(body: RecognizeRequest, request: Request) -> RecognizeResponse:
 
     frames = np.stack([frame_to_rows(f.face, f.left_hand, f.pose, f.right_hand) for f in body.frames])
     decision = decide(classifier, frames, body.target)
-    user = optional_user(request.cookies.get("signspark_session"))
+    user = optional_user(request.cookies.get("cosign_session"))
     xp_awarded = award_for_accepted_sign(user["id"], body.lesson_id, body.target) if user and body.lesson_id and decision.status == "accepted" else 0
     log.info(
         "recognize target=%s status=%s p=%s frames=%d",

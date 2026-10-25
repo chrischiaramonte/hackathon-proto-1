@@ -16,7 +16,7 @@ export interface Progress {
   active: LessonState | null;
 }
 
-export const STORAGE_KEY = 'signspark:progress:v1';
+export const STORAGE_KEY = 'cosign:progress:v1';
 export const EMPTY_PROGRESS: Progress = { xp: 0, completed: {}, learned: [], active: null };
 
 type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;

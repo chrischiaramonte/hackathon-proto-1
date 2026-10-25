@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 export type Theme = 'light' | 'dark';
 
-const STORAGE_KEY = 'signspark:theme';
+const STORAGE_KEY = 'cosign:theme';
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 function storedTheme(): Theme | null {
