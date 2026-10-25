@@ -1,3 +1,9 @@
+/* Reserve the scrollbar's space on the dashboard, so switching to the shorter
+   Leaderboard tab doesn't shift the layout sideways. */
+:global(html):has(.page) {
+  scrollbar-gutter: stable;
+}
+
 .page {
   max-width: 880px;
   margin: 0 auto;

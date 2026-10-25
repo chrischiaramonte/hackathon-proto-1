@@ -124,41 +124,52 @@
   gap: 0.9rem;
 }
 
+/* Typed answer: a panel the same size and place as the camera, so both question types share one layout. */
 .translationPractice {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1rem;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: var(--panel-h);
+  padding: 2rem clamp(1.25rem, 4vw, 3rem);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
-.translationPractice > p {
+.translationPractice label {
   color: var(--ink-2);
-  font-weight: 700;
-  text-align: center;
-}
-
-.translationPractice form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 0.5rem;
-  width: min(100%, 560px);
-}
-
-.translationPractice form label {
-  grid-column: 1 / -1;
   font-weight: 800;
 }
 
 .translationPractice input {
-  min-width: 0;
-  min-height: 48px;
-  padding: 0.7rem 0.9rem;
+  width: 100%;
+  min-height: 72px;
+  padding: 0.8rem 1.1rem;
   border: 2px solid var(--line);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--bg);
   color: var(--ink);
   font: inherit;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.translationPractice input:focus-visible {
+  border-color: var(--brand-text);
+  outline: none;
+  box-shadow: 0 0 0 4px var(--brand-soft);
+}
+
+.translationPractice input::placeholder {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.translationHint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .cameraVeil,

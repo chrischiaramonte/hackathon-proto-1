@@ -70,12 +70,6 @@ body,
   min-height: 100%;
 }
 
-/* Always reserve the scrollbar's space, so the layout doesn't shift sideways when a
-   view stops scrolling (e.g. switching from Learn to the shorter Leaderboard tab). */
-html {
-  scrollbar-gutter: stable;
-}
-
 body {
   margin: 0;
   background: var(--bg);

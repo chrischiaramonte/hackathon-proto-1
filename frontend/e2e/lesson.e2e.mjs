@@ -102,12 +102,11 @@ await scenario('completes the lesson with real recognition', async () => {
     let { context, page } = await launch('hello');
     await page.goto(APP);
     await page.getByRole('button', { name: /^Continue/ }).first().click();
-    await page.getByRole('button', { name: /I’m ready|Getting camera ready|Connecting/ }).waitFor();
-    if ((await page.locator('h1').count()) === 0) {
+    await page.getByRole('button', { name: /I’m ready|Getting camera ready|Connecting|Check answer/ }).waitFor();
+    if ((await page.locator('h1').innerText()) === 'What does this sign mean?') {
       // A translation prompt hides the word: type the meaning, as a learner would.
       const label = (await page.locator('video').first().getAttribute('aria-label')).match(/“(.+)”/)[1];
-      await page.getByRole('button', { name: /I’m ready/ }).click();
-      await page.getByLabel('English meaning').fill(label);
+      await page.getByLabel('Type the English word or phrase').fill(label);
       await page.getByRole('button', { name: 'Check answer' }).click();
       await page.getByText(PRAISE).waitFor();
     } else {

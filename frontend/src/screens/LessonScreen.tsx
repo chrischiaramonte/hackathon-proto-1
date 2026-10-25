@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { CameraView } from '../components/CameraView';
 import { Countdown } from '../components/Countdown';
@@ -63,6 +63,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   const [englishAnswer, setEnglishAnswer] = useState('');
   const readyRef = useRef<HTMLButtonElement>(null);
   const wordRef = useRef<HTMLHeadingElement>(null);
+  const answerRef = useRef<HTMLInputElement>(null);
   // Set synchronously, so an answer arriving just as Skip is pressed can't count twice.
   const answered = useRef(false);
 
@@ -97,8 +98,10 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   // "I'm ready" disappears when practice starts; move focus to the word instead of
   // dropping it on the page, so keyboard and screen reader users stay in place.
   useEffect(() => {
-    if (phase.name === 'practice') wordRef.current?.focus();
-  }, [phase.name]);
+    if (phase.name !== 'practice') return;
+    // Typed questions put the cursor straight in the answer box.
+    (reverse ? answerRef : wordRef).current?.focus();
+  }, [phase.name, reverse, signId]);
 
   // Record the outcome right away, so a refresh can never lose it.
   const finish = useCallback(
@@ -161,6 +164,9 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
     finish(correct ? 'correct' : 'incorrect', null);
   };
   const usePracticeMode = () => onChange({ ...lesson, scored: false });
+  useLayoutEffect(() => {
+    if (phase.name === 'learn' && reverse) startPractice();
+  }, [phase.name, reverse, signId]);
 
   const continueLesson = () => {
     if (isComplete(lesson)) onComplete(lesson);
@@ -214,10 +220,12 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
         <div className={styles.prompt}>
           <p id="lesson-step" className={styles.eyebrow}>
             {reverse
-              ? phase.name === 'learn' ? 'What does this sign mean?' : 'Type the English word or phrase'
+              ? 'Your turn: type'
               : phase.name === 'learn' ? (missedBefore ? 'Let’s try this one again' : 'Watch the sign') : 'Your turn: sign'}
           </p>
-          {!reverse && (
+          {reverse ? (
+            <h1 className={styles.word}>What does this sign mean?</h1>
+          ) : (
             <h1 ref={wordRef} className={styles.word} tabIndex={-1} aria-describedby="lesson-step">
               {sign.label}
             </h1>
@@ -225,28 +233,33 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
         </div>
 
         <div className={styles.panels}>
-          <SignDemo key={sign.id} sign={sign} compact={phase.name !== 'learn'} />
+          <SignDemo key={sign.id} sign={sign} compact={!reverse && phase.name !== 'learn'} />
 
           <div className={styles.practice}>
             {reverse ? (
-              <div className={styles.translationPractice}>
-                {phase.name === 'learn' && <p>Watch the sign, then type the English meaning.</p>}
-                {practicing && (
-                  <form onSubmit={(event) => { event.preventDefault(); submitEnglish(); }}>
-                    <label htmlFor="english-answer">English meaning</label>
-                    <input
-                      id="english-answer"
-                      type="text"
-                      autoComplete="off"
-                      value={englishAnswer}
-                      onChange={(event) => setEnglishAnswer(event.target.value)}
-                      placeholder="Type the meaning"
-                      autoFocus
-                    />
-                    <Button type="submit" size="lg" disabled={!englishAnswer.trim()} className={styles.primaryAction}>Check answer</Button>
-                  </form>
-                )}
-              </div>
+              <form
+                id="translation-form"
+                className={styles.translationPractice}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (practicing && englishAnswer.trim()) submitEnglish();
+                }}
+              >
+                <label htmlFor="english-answer">Type the English word or phrase</label>
+                <input
+                  id="english-answer"
+                  type="text"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  value={englishAnswer}
+                  onChange={(event) => setEnglishAnswer(event.target.value)}
+                  placeholder="Your answer"
+                  readOnly={!practicing}
+                  ref={answerRef}
+                />
+                <p className={styles.translationHint}>Replay the signer, or slow it down, as often as you like.</p>
+              </form>
             ) : lesson.scored ? (
               <CameraView
                 active={practicing}
@@ -310,6 +323,22 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
                         : 'Getting camera ready…'}
             </Button>
           )}
+          {practicing && reverse && (
+            <>
+              <Button variant="secondary" onClick={() => finish('incorrect', null, true)}>
+                Skip
+              </Button>
+              <Button
+                type="submit"
+                form="translation-form"
+                size="lg"
+                disabled={!englishAnswer.trim()}
+                className={styles.primaryAction}
+              >
+                Check answer
+              </Button>
+            </>
+          )}
           {practicing && !reverse && (
             <>
               <Button variant="secondary" onClick={() => finish('incorrect', lastResult.current, true)}>
@@ -346,7 +375,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
         ) : (
           <FeedbackSheet
             tone="danger"
-            title={reverse ? 'Not quite' : phase.skipped ? 'Skipped' : 'Time’s up'}
+            title={phase.skipped ? 'Skipped' : reverse ? 'Not quite' : 'Time’s up'}
             detail={phase.reverse
               ? `The answer is “${sign.label}”. This word restarts with signing, then typing.`
               : `This word’s progress resets. Sign “${sign.label}”, then type its English meaning.${missDetail(phase.result, sign.id)}`}
