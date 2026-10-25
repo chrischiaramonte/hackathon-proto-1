@@ -44,7 +44,7 @@ interface Props {
   onReset: () => void;
   account: AccountProfile | null;
   onManageAccount: () => void;
-  leaderboardRefresh: number;
+  onLogout: () => void;
 }
 
 export function Dashboard({
@@ -56,7 +56,7 @@ export function Dashboard({
   onReset,
   account,
   onManageAccount,
-  leaderboardRefresh,
+  onLogout,
 }: Props) {
   const [confirmReset, setConfirmReset] = useState(false);
   // The reset button and its confirmation replace each other; keep focus with whichever is showing.
@@ -144,7 +144,6 @@ export function Dashboard({
     account?.xp,
     account?.leaderboardVisible,
     account?.friendsOnly,
-    leaderboardRefresh,
     tab,
   ]);
 
@@ -198,8 +197,11 @@ export function Dashboard({
             <IconBolt className={styles.bolt} />{" "}
             {account ? account.xp : progress.xp} XP
           </span>
-          <Button variant="secondary" onClick={onManageAccount}>
-            {account ? account.displayName : "Sign in"}
+          <Button
+            variant="secondary"
+            onClick={account ? onLogout : onManageAccount}
+          >
+            {account ? "Logout" : "Sign in"}
           </Button>
           <ThemeToggle />
         </div>

@@ -21,7 +21,6 @@ import { CompleteScreen } from "./screens/CompleteScreen";
 import { Dashboard } from "./screens/Dashboard";
 import { LessonScreen } from "./screens/LessonScreen";
 import { AccountAccess } from "./screens/AccountAccess";
-import { AccountCenter } from "./screens/AccountCenter";
 import { accountApi, type AccountProfile } from "./lib/accountApi";
 
 /** Everyone is on the public leaderboard (there are no privacy settings in the app). */
@@ -83,7 +82,6 @@ export function App() {
   const [screen, setScreen] = useState<Screen>({ name: "dashboard" });
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [accountPanel, setAccountPanel] = useState(false);
-  const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
   const [progressReady, setProgressReady] = useState(false);
   // Which record to write. Set in the same turn as the account switch so
   // signing out cannot overwrite that learner's lessons with an empty record.
@@ -227,40 +225,30 @@ export function App() {
         }}
         account={account}
         onManageAccount={() => setAccountPanel(true)}
-        leaderboardRefresh={leaderboardRefresh}
+        onLogout={() => {
+          sessionToken.current += 1;
+          void accountApi.logout().finally(() => {
+            setAccount(null);
+            setAccountPanel(false);
+            showSignedOutProgress();
+          });
+        }}
       />
-      {accountPanel &&
-        (account ? (
-          <AccountCenter
-            account={account}
-            onClose={() => {
-              setAccountPanel(false);
-              setLeaderboardRefresh((n) => n + 1);
-            }}
-            onSignOut={() => {
-              sessionToken.current += 1;
-              void accountApi.logout().finally(() => {
-                setAccount(null);
-                setAccountPanel(false);
-                showSignedOutProgress();
-              });
-            }}
-          />
-        ) : (
-          <AccountAccess
-            onGuest={() => setAccountPanel(false)}
-            onSubmit={async (name, password, register) => {
-              sessionToken.current += 1;
-              const user = register
-                ? await accountApi.register(name, password)
-                : await accountApi.login(name, password);
-              const profile = await onLeaderboard(user);
-              setAccount(profile);
-              setAccountPanel(false);
-              showProgress(profile.id);
-            }}
-          />
-        ))}
+      {accountPanel && !account && (
+        <AccountAccess
+          onGuest={() => setAccountPanel(false)}
+          onSubmit={async (name, password, register) => {
+            sessionToken.current += 1;
+            const user = register
+              ? await accountApi.register(name, password)
+              : await accountApi.login(name, password);
+            const profile = await onLeaderboard(user);
+            setAccount(profile);
+            setAccountPanel(false);
+            showProgress(profile.id);
+          }}
+        />
+      )}
     </>
   );
 }
