@@ -4,7 +4,6 @@ import { CameraView } from '../components/CameraView';
 import { Countdown } from '../components/Countdown';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { IconBolt, IconClose, IconHand } from '../components/Icons';
-import { ModelGuesses } from '../components/ModelGuesses';
 import { ProgressBar } from '../components/ProgressBar';
 import { SignDemo } from '../components/SignDemo';
 import { signLabel, signs } from '../content';
@@ -284,9 +283,6 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
             {!reverse && practicing && lesson.scored && (
               <Countdown key={phase.startedAt} startedAt={phase.startedAt} durationMs={PRACTICE_MS} />
             )}
-            {practicing && recognizer.lastResult && (
-              <ModelGuesses predictions={recognizer.lastResult.topPredictions} target={sign.id} />
-            )}
           </div>
         </div>
       </main>
@@ -334,14 +330,19 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
           )}
           {practicing && !reverse && (
             <>
-              <Button variant="secondary" onClick={() => finish('incorrect', lastResult.current, true)}>
-                Skip
-              </Button>
               {lesson.scored && recognizer.error && (
                 <Button variant="ghost" onClick={usePracticeMode}>
                   Practice without scoring
                 </Button>
               )}
+              <Button
+                variant="secondary"
+                size={lesson.scored ? 'lg' : 'md'}
+                onClick={() => finish('incorrect', lastResult.current, true)}
+                className={lesson.scored ? styles.primaryAction : undefined}
+              >
+                Skip
+              </Button>
               {!lesson.scored && (
                 <Button size="lg" onClick={() => finish('correct', null)} className={styles.primaryAction}>
                   I practiced it
