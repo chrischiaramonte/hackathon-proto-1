@@ -18,10 +18,17 @@ command you can rerun.
 ## Quick start
 
 Prerequisites: [uv](https://docs.astral.sh/uv/) (it fetches Python 3.12 if
-needed), Node 22.12+ (or 24), and Chrome or Edge (the MediaPipe build we use is most
+needed), Node 22.12+ (or 24), the [SpacetimeDB CLI](https://spacetimedb.com/install)
+2.13+ (for accounts), and Chrome or Edge (the MediaPipe build we use is most
 reliable there).
 
 ```bash
+# Accounts live in the Maincloud database calhack-r0hwe, already published.
+# One-time setup: `spacetime login` as the database owner (only that login
+# can call it) and `(cd spacetimedb && npm install)`.
+# Only after changing spacetimedb/src, republish (data is kept):
+spacetime publish --server maincloud --module-path spacetimedb --yes calhack-r0hwe
+
 # Terminal 1: recognition service on http://127.0.0.1:8000
 cd backend
 uv sync                                   # FastAPI + LiteRT runtime + pytest
@@ -84,7 +91,7 @@ an account or sign in. New accounts are private by default. Learners can opt
 into the global leaderboard or limit their visible rank to accepted friends;
 friend requests use exact display names. Password hashes (PBKDF2), opaque
 HTTP-only sessions, XP events and friend relationships are stored in
-`backend/data/signspark.sqlite3` (override with `SIGNSPARK_DB`). The server
+[SpacetimeDB](https://spacetimedb.com) (see [Accounts database](#accounts-database)). The server
 awards leaderboard XP only after an accepted recognition result or validated
 translation answer, with repeat awards of 10, 5, 2, then 0 XP per sign and
 lesson. Account deletion cascades through sessions, XP and friend links.
@@ -102,10 +109,43 @@ and set `SIGNSPARK_COOKIE_SECURE=1`.
 | Auto recognition misbehaves | Tick **Manual capture**: Record → sign → Stop, 3 tries. |
 | Near-tie between similar signs | Not accepted until the model clearly prefers the target. |
 
+## Accounts database
+
+`spacetimedb/src/index.ts` is a SpacetimeDB TypeScript module. All of its tables
+are private:
+
+| Table | Key | Holds |
+| --- | --- | --- |
+| `user` | `id` (auto-inc), `name_key` unique | display name, lowercased `name_key` for case-insensitive uniqueness, PBKDF2 hash, privacy flags, running `xp` total |
+| `session` | `token_hash` | SHA-256 of the cookie token, `user_id`, `expires_at` (30 days) |
+| `xp_event` | `id`; index `(user_id, lesson_id, sign)` | one row per award: `award_index` 0–2, `points` 10/5/2 |
+| `friendship` | `pair_key` = `"low:high"` | one row per pair, `sender_id`, `accepted` |
+| `admin` | `identity` | the publisher, set in `init` |
+
+SpacetimeDB has no Python SDK. FastAPI (`backend/app/spacetime.py`) calls the
+module's procedures over HTTP (`POST /v1/database/signspark/call/<name>`),
+authenticated as the publisher, and every procedure rejects other callers.
+Python keeps password hashing, cookies and the curriculum check. Each procedure
+runs in one transaction, so name uniqueness, the 10/5/2 XP ladder, friend
+request acceptance and account-deletion cascades are atomic. The `/api/account`
+contract is unchanged.
+
+Configuration: `SIGNSPARK_STDB_URL` (default `https://maincloud.spacetimedb.com`),
+`SIGNSPARK_STDB_DB` (default `calhack-r0hwe`) and `SIGNSPARK_STDB_TOKEN`
+(default: the token in `~/.config/spacetime/cli.toml`; it must belong to the
+identity that published the database, which `init` records as admin). If the
+database is down, account routes return 503 and recognition still works without
+awarding XP. To work offline, run `spacetime start`, publish with
+`--server local --delete-data ... signspark` and set
+`SIGNSPARK_STDB_URL=http://127.0.0.1:3000 SIGNSPARK_STDB_DB=signspark`.
+
 ## Repository layout
 
 ```
+spacetimedb/
+  src/index.ts          accounts database: tables and admin-only procedures
 backend/
+  app/accounts.py       /api/account routes; app/spacetime.py is the HTTP client
   app/landmarks.py      543-row frame layout (face | left hand | pose | right hand)
   app/classifier.py     TFLite inference only: empty-frame filter, softmax, labels
   app/recognition.py    acceptance policy: trimming, quality gates, thresholds
@@ -232,7 +272,7 @@ including NaN coordinates, gets a 422 that never echoes landmark data back.
 
 | Command | What it covers | Result |
 | --- | --- | --- |
-| `cd backend && uv run pytest` | Layout; model output; **real PopSign fixtures predicted and accepted**, also mirrored; wrong signs rejected; gates; trimming; margin rule; API contract and validation; lesson content only uses model labels and has clips on disk | 44 passed |
+| `cd backend && uv run pytest` | Layout; model output; **real PopSign fixtures predicted and accepted**, also mirrored; wrong signs rejected; gates; trimming; margin rule; API contract and validation; lesson content only uses model labels and has clips on disk; accounts, XP ladder, friends, leaderboard privacy and deletion against a live SpacetimeDB (skipped if none is running) | 48 passed |
 | `cd frontend && npm test` | Lesson queue, requeue and XP rules; persistence, corruption and storage failures; segmenter timing; API client errors and timeouts; landmark conversion; framing and lighting hints; content integrity | 39 passed |
 | `cd frontend && npm run typecheck && npm run build` | Strict TypeScript, production build | OK |
 | `cd frontend && npm run e2e` | Real browser, real MediaPipe, real model: accept, reject and requeue, resume after reload, full lesson completion with 75 XP, camera denied, server down, manual capture | 6 of 6 passed |
