@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { answer, isComplete, startLesson, summarize } from './lessonEngine';
-import { clearProgress, EMPTY_PROGRESS, loadProgress, recordCompletion, saveProgress, STORAGE_KEY } from './progress';
+import {
+  claimGuestProgress,
+  clearProgress,
+  EMPTY_PROGRESS,
+  loadProgress,
+  progressKey,
+  recordCompletion,
+  saveProgress,
+  STORAGE_KEY,
+} from './progress';
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -73,6 +82,33 @@ describe('progress persistence', () => {
     saveProgress({ ...EMPTY_PROGRESS, xp: 10 }, storage);
     clearProgress(storage);
     expect(loadProgress(storage)).toEqual(EMPTY_PROGRESS);
+  });
+
+  it('keeps a signed-in record separate from the signed-out one', () => {
+    const storage = memoryStorage();
+    const guest = { ...EMPTY_PROGRESS, xp: 3 };
+    const signedIn = { ...EMPTY_PROGRESS, xp: 40, learned: ['mom'] };
+    saveProgress(guest, storage, progressKey(null));
+    saveProgress(signedIn, storage, progressKey(7));
+    expect(loadProgress(storage, progressKey(null))).toEqual(guest);
+    expect(loadProgress(storage, progressKey(7))).toEqual(signedIn);
+    clearProgress(storage, progressKey(7));
+    expect(loadProgress(storage, progressKey(null))).toEqual(guest);
+    expect(loadProgress(storage, progressKey(7))).toEqual(EMPTY_PROGRESS);
+  });
+
+  it('moves leftover device progress onto an account once, leaving signed-out progress empty', () => {
+    const storage = memoryStorage();
+    const legacy = { ...EMPTY_PROGRESS, xp: 15, learned: ['hello'] };
+    saveProgress(legacy, storage);
+    claimGuestProgress(4, storage);
+    expect(loadProgress(storage, progressKey(4))).toEqual(legacy);
+    expect(loadProgress(storage)).toEqual(EMPTY_PROGRESS);
+    const laterGuest = { ...EMPTY_PROGRESS, xp: 1 };
+    saveProgress(laterGuest, storage);
+    claimGuestProgress(4, storage);
+    expect(loadProgress(storage, progressKey(4))).toEqual(legacy);
+    expect(loadProgress(storage)).toEqual(laterGuest);
   });
 });
 

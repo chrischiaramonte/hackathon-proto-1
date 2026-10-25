@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getLesson, signs } from "./content";
 import {
   isComplete,
@@ -8,9 +8,11 @@ import {
   type LessonSummary,
 } from "./lib/lessonEngine";
 import {
+  claimGuestProgress,
   clearProgress,
   EMPTY_PROGRESS,
   loadProgress,
+  progressKey,
   recordCompletion,
   saveProgress,
   type Progress,
@@ -44,8 +46,8 @@ function lessonTitle(lessonId: string): string {
 }
 
 /** Saved progress, minus an in-progress lesson that no longer matches the content. */
-function restore(): { progress: Progress; screen: Screen } {
-  const progress = loadProgress();
+function restore(userId: number | null): { progress: Progress; screen: Screen } {
+  const progress = loadProgress(localStorage, progressKey(userId));
   const active = progress.active;
   if (!active) return { progress, screen: { name: "dashboard" } };
   const known =
@@ -77,19 +79,52 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 export function App() {
-  const [initial] = useState(restore);
-  const [progress, setProgress] = useState(initial.progress);
-  const [screen, setScreen] = useState<Screen>(initial.screen);
+  const [progress, setProgress] = useState<Progress>(EMPTY_PROGRESS);
+  const [screen, setScreen] = useState<Screen>({ name: "dashboard" });
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [accountPanel, setAccountPanel] = useState(false);
   const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
+  const [progressReady, setProgressReady] = useState(false);
+  // Which record to write. Set in the same turn as the account switch so
+  // signing out cannot overwrite that learner's lessons with an empty record.
+  const progressOwner = useRef<number | null>(null);
+  const sessionToken = useRef(0);
+
+  const showProgress = (userId: number | null) => {
+    if (userId != null) claimGuestProgress(userId);
+    progressOwner.current = userId;
+    const restored = restore(userId);
+    setProgress(restored.progress);
+    setScreen(restored.screen);
+    setProgressReady(true);
+  };
+
+  const showSignedOutProgress = () => {
+    progressOwner.current = null;
+    setProgress(loadProgress(localStorage, progressKey(null)));
+    setScreen({ name: "dashboard" });
+    setProgressReady(true);
+  };
 
   useEffect(() => {
+    const token = sessionToken.current;
+    let cancelled = false;
     void accountApi
       .me()
       .then(onLeaderboard)
-      .then(setAccount)
-      .catch(() => setAccount(null));
+      .then((user) => {
+        if (cancelled || sessionToken.current !== token) return;
+        setAccount(user);
+        showProgress(user.id);
+      })
+      .catch(() => {
+        if (cancelled || sessionToken.current !== token) return;
+        setAccount(null);
+        showProgress(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
   useEffect(() => {
     if (screen.name === "dashboard" && account)
@@ -97,12 +132,19 @@ export function App() {
         .me()
         .then(onLeaderboard)
         .then(setAccount)
-        .catch(() => setAccount(null));
+        .catch(() => {
+          setAccount(null);
+          showSignedOutProgress();
+        });
   }, [screen.name]);
 
-  useEffect(() => saveProgress(progress), [progress]);
+  useEffect(() => {
+    if (!progressReady) return;
+    saveProgress(progress, localStorage, progressKey(progressOwner.current));
+  }, [progress, progressReady]);
 
   const begin = (lesson: { id: string; signs: string[] }, replay: boolean) => {
+    if (!progressReady) return;
     const active = startLesson(lesson, {
       replay,
       scored: true,
@@ -179,7 +221,8 @@ export function App() {
         onResume={resumeLesson}
         onReview={openReview}
         onReset={() => {
-          clearProgress();
+          if (!progressReady) return;
+          clearProgress(localStorage, progressKey(progressOwner.current));
           setProgress(EMPTY_PROGRESS);
         }}
         account={account}
@@ -195,9 +238,11 @@ export function App() {
               setLeaderboardRefresh((n) => n + 1);
             }}
             onSignOut={() => {
+              sessionToken.current += 1;
               void accountApi.logout().finally(() => {
                 setAccount(null);
                 setAccountPanel(false);
+                showSignedOutProgress();
               });
             }}
           />
@@ -205,11 +250,14 @@ export function App() {
           <AccountAccess
             onGuest={() => setAccountPanel(false)}
             onSubmit={async (name, password, register) => {
+              sessionToken.current += 1;
               const user = register
                 ? await accountApi.register(name, password)
                 : await accountApi.login(name, password);
-              setAccount(await onLeaderboard(user));
+              const profile = await onLeaderboard(user);
+              setAccount(profile);
               setAccountPanel(false);
+              showProgress(profile.id);
             }}
           />
         ))}

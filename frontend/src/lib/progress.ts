@@ -1,4 +1,5 @@
-// Learner progress, persisted in localStorage. No accounts, no server.
+// Lesson progress, persisted in localStorage. Guest progress and each account's
+// progress are stored separately, so signing out shows a fresh record.
 import type { LessonState, LessonSummary } from './lessonEngine';
 
 export interface LessonRecord {
@@ -21,10 +22,33 @@ export const EMPTY_PROGRESS: Progress = { xp: 0, completed: {}, learned: [], act
 
 type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
-export function loadProgress(storage: Store = localStorage): Progress {
+/** Guest progress stays on STORAGE_KEY. A signed-in learner has their own key. */
+export function progressKey(userId: number | null): string {
+  return userId == null ? STORAGE_KEY : `${STORAGE_KEY}:user:${userId}`;
+}
+
+/**
+ * Progress saved before accounts were split lives on the guest key. The first
+ * time an account is used on this device, that record becomes theirs and the
+ * signed-out view is left empty.
+ */
+export function claimGuestProgress(userId: number, storage: Store = localStorage): void {
+  const key = progressKey(userId);
+  try {
+    if (storage.getItem(key) != null) return;
+    const guest = storage.getItem(STORAGE_KEY);
+    if (guest == null) return;
+    storage.setItem(key, guest);
+    storage.removeItem(STORAGE_KEY);
+  } catch {
+    // Leave both records where they are if storage can't be rewritten.
+  }
+}
+
+export function loadProgress(storage: Store = localStorage, key = STORAGE_KEY): Progress {
   let data: unknown;
   try {
-    data = JSON.parse(storage.getItem(STORAGE_KEY) ?? 'null');
+    data = JSON.parse(storage.getItem(key) ?? 'null');
   } catch {
     return EMPTY_PROGRESS;
   }
@@ -44,17 +68,17 @@ export function loadProgress(storage: Store = localStorage): Progress {
   };
 }
 
-export function saveProgress(progress: Progress, storage: Store = localStorage): void {
+export function saveProgress(progress: Progress, storage: Store = localStorage, key = STORAGE_KEY): void {
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    storage.setItem(key, JSON.stringify(progress));
   } catch {
     // Storage full or disabled (e.g. some private modes): keep playing in memory.
   }
 }
 
-export function clearProgress(storage: Store = localStorage): void {
+export function clearProgress(storage: Store = localStorage, key = STORAGE_KEY): void {
   try {
-    storage.removeItem(STORAGE_KEY);
+    storage.removeItem(key);
   } catch {
     // Nothing stored to clear.
   }
