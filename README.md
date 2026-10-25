@@ -1,4 +1,4 @@
-# CoSign: learn ASL with your webcam
+# cosign: learn ASL with your webcam
 
 A Duolingo-style web app for family and friends of Deaf people. Watch a Deaf
 signer demonstrate a sign, sign it back to your webcam, and a pretrained
