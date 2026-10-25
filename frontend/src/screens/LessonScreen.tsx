@@ -4,7 +4,6 @@ import { CameraView } from '../components/CameraView';
 import { Countdown } from '../components/Countdown';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { IconBolt, IconClose, IconHand } from '../components/Icons';
-import { ModelGuesses } from '../components/ModelGuesses';
 import { ProgressBar } from '../components/ProgressBar';
 import { SignDemo } from '../components/SignDemo';
 import { signLabel, signs } from '../content';
@@ -283,9 +282,6 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
 
             {!reverse && practicing && lesson.scored && (
               <Countdown key={phase.startedAt} startedAt={phase.startedAt} durationMs={PRACTICE_MS} />
-            )}
-            {practicing && recognizer.lastResult && (
-              <ModelGuesses predictions={recognizer.lastResult.topPredictions} target={sign.id} />
             )}
           </div>
         </div>
