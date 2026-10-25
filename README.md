@@ -23,10 +23,15 @@ needed), Node 22.12+ (or 24), the [SpacetimeDB CLI](https://spacetimedb.com/inst
 reliable there).
 
 ```bash
-# Accounts live in the Maincloud database calhack-r0hwe, already published.
-# One-time setup: `spacetime login` as the database owner (only that login
-# can call it) and `(cd spacetimedb && npm install)`.
-# Only after changing spacetimedb/src, republish (data is kept):
+# One time setup
+curl -sSf https://install.spacetimedb.com | sh
+spacetime login
+spacetime login show
+# Send the ID to DB owner after login show
+# The DB owner should run spacetime call --server maincloud calhack-r0hwe add_admin <identity>
+
+# After being added as admin
+cd spacetimedb && npm install
 spacetime publish --server maincloud --module-path spacetimedb --yes calhack-r0hwe
 
 # Terminal 1: recognition service on http://127.0.0.1:8000
@@ -69,9 +74,9 @@ included, is served locally.
 The video never leaves the browser; only landmark coordinates are sent, and
 the backend neither stores nor logs them.
 
-**Lesson flow** (DESIGN.md §4): each question is *learn* (looping demo by a
-real Deaf signer, with slow motion and a second signer) → *practice* (live
-camera, 20 s in auto mode) → *feedback*. Accepted signs earn XP; a miss (time
+**Lesson flow** (DESIGN.md §4): each question is _learn_ (looping demo by a
+real Deaf signer, with slow motion and a second signer) → _practice_ (live
+camera, 20 s in auto mode) → _feedback_. Accepted signs earn XP; a miss (time
 out or Skip) sends the sign to the back of the queue, and the lesson ends only
 when every sign has been signed correctly. Then you get a completion screen with
 XP, first-try accuracy and per-sign results.
@@ -100,26 +105,26 @@ and set `COSIGN_COOKIE_SECURE=1`.
 
 **When things go wrong:**
 
-| Situation | Behaviour |
-| --- | --- |
-| Camera blocked / missing / in use / unplugged | Specific explanation and Retry. "Practice without camera" runs the lesson unscored (no XP, no completion). Scored practice can't start without a working camera, and an unplugged camera returns to the demo without a miss. |
-| Backend unreachable | Banner, Retry and "Practice without scoring"; the start button is disabled while it's down. Progress is never lost. |
-| No hands, face out of view, hand held still | Not scored. The learner is told what to fix (`no_hands`, `no_face`, `no_motion`). |
-| Dark room, bright window behind you, too close or far, hands leaving the frame | Live coaching hints over the camera. |
-| Near-tie between similar signs | Not accepted until the model clearly prefers the target. |
+| Situation                                                                      | Behaviour                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Camera blocked / missing / in use / unplugged                                  | Specific explanation and Retry. "Practice without camera" runs the lesson unscored (no XP, no completion). Scored practice can't start without a working camera, and an unplugged camera returns to the demo without a miss. |
+| Backend unreachable                                                            | Banner, Retry and "Practice without scoring"; the start button is disabled while it's down. Progress is never lost.                                                                                                          |
+| No hands, face out of view, hand held still                                    | Not scored. The learner is told what to fix (`no_hands`, `no_face`, `no_motion`).                                                                                                                                            |
+| Dark room, bright window behind you, too close or far, hands leaving the frame | Live coaching hints over the camera.                                                                                                                                                                                         |
+| Near-tie between similar signs                                                 | Not accepted until the model clearly prefers the target.                                                                                                                                                                     |
 
 ## Accounts database
 
 `spacetimedb/src/index.ts` is a SpacetimeDB TypeScript module. All of its tables
 are private:
 
-| Table | Key | Holds |
-| --- | --- | --- |
-| `user` | `id` (auto-inc), `name_key` unique | display name, lowercased `name_key` for case-insensitive uniqueness, PBKDF2 hash, privacy flags, running `xp` total |
-| `session` | `token_hash` | SHA-256 of the cookie token, `user_id`, `expires_at` (30 days) |
-| `xp_event` | `id`; index `(user_id, lesson_id, sign)` | one row per award: `award_index` 0–2, `points` 10/5/2 |
-| `friendship` | `pair_key` = `"low:high"` | one row per pair, `sender_id`, `accepted` |
-| `admin` | `identity` | the publisher, set in `init` |
+| Table        | Key                                      | Holds                                                                                                               |
+| ------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `user`       | `id` (auto-inc), `name_key` unique       | display name, lowercased `name_key` for case-insensitive uniqueness, PBKDF2 hash, privacy flags, running `xp` total |
+| `session`    | `token_hash`                             | SHA-256 of the cookie token, `user_id`, `expires_at` (30 days)                                                      |
+| `xp_event`   | `id`; index `(user_id, lesson_id, sign)` | one row per award: `award_index` 0–2, `points` 10/5/2                                                               |
+| `friendship` | `pair_key` = `"low:high"`                | one row per pair, `sender_id`, `accepted`                                                                           |
+| `admin`      | `identity`                               | the publisher, set in `init`                                                                                        |
 
 SpacetimeDB has no Python SDK. FastAPI (`backend/app/spacetime.py`) calls the
 module's procedures over HTTP (`POST /v1/database/signspark/call/<name>`),
@@ -174,7 +179,7 @@ frontend/
 ## Recognition pipeline and what we verified
 
 **Model.** [`sign/kaggle-asl-signs-1st-place`](https://huggingface.co/sign/kaggle-asl-signs-1st-place)
-(MIT), the winning ensemble of Google's *Isolated Sign Language Recognition*
+(MIT), the winning ensemble of Google's _Isolated Sign Language Recognition_
 Kaggle competition. Verified by reading the [original training code](https://github.com/hoyso48/Google---Isolated-Sign-Language-Recognition-1st-place-solution)
 and probing the model file:
 
@@ -200,14 +205,14 @@ test-split videos with HTTP range requests. We ran MediaPipe Holistic (Python;
 the same legacy Holistic solution and settings as the browser) on **168 clips of 28 signs from
 4–8 signers each**:
 
-| Variant (`scripts/evaluate_samples.py`) | Top-1 | Top-5 | mean p(true sign) |
-| --- | --- | --- | --- |
-| As recorded | **97%** | 99% | 0.83 |
-| Mirrored, as if signed left-handed | 96% | 99% | 0.83 |
-| Every other frame (~15 fps browser) | 95% | 99% | 0.81 |
-| Trimmed to the hand-visible span | 98% | 100% | 0.86 |
-| 1 s of idle frames added each side | 96% | 99% | 0.73 |
-| Landmarks from horizontally flipped video | 98% | 99% | 0.83 |
+| Variant (`scripts/evaluate_samples.py`)   | Top-1   | Top-5 | mean p(true sign) |
+| ----------------------------------------- | ------- | ----- | ----------------- |
+| As recorded                               | **97%** | 99%   | 0.83              |
+| Mirrored, as if signed left-handed        | 96%     | 99%   | 0.83              |
+| Every other frame (~15 fps browser)       | 95%     | 99%   | 0.81              |
+| Trimmed to the hand-visible span          | 98%     | 100%  | 0.86              |
+| 1 s of idle frames added each side        | 96%     | 99%   | 0.73              |
+| Landmarks from horizontally flipped video | 98%     | 99%   | 0.83              |
 
 So the layout, label mapping and preprocessing are right, and left-handed
 signing and a slow browser frame rate are fine. Because idle frames hurt
@@ -222,7 +227,7 @@ prediction with p ≥ 0.4 and a lead of ≥ 0.1 over the runner-up. Quality gate
 refuse to score attempts without hands, without a face, or with a hand held
 still. At p ≥ 0.4, 95.8% of genuine single clips pass, and a clip of a
 different sign is accepted for a given wrong target 0.02% of the time.
-Synthetic nonsense scored against a *different* target: shuffled frames 0.02%,
+Synthetic nonsense scored against a _different_ target: shuffled frames 0.02%,
 a hand wandering randomly 0.07%, frozen hands 0% (motion gate), reversed signs
 0.37%.
 
@@ -230,20 +235,21 @@ a hand wandering randomly 0.07%, frozen hands 0% (motion gate), reversed signs
 segmenter timing over all 168 clips and scores every window:
 
 | Frame rate | Accepted on one pass of the sign | False accept per wrong target |
-| --- | --- | --- |
-| ~30 fps | **96.4%** | 0.022% (1 of 4,536) |
-| ~15 fps | **93.5%** | 0% |
+| ---------- | -------------------------------- | ----------------------------- |
+| ~30 fps    | **96.4%**                        | 0.022% (1 of 4,536)           |
+| ~15 fps    | **93.5%**                        | 0%                            |
 
 **In the real browser** (`npm run e2e`): headless Chrome's fake webcam played
-PopSign videos by signers who do *not* appear in the demo clips, through the
+PopSign videos by signers who do _not_ appear in the demo clips, through the
 real MediaPipe JS → API → model path.
-- 11 different signs across *First words* and *Family* were accepted, at p 0.41–0.98, 1–4 s after pressing "I'm ready".
+
+- 11 different signs across _First words_ and _Family_ were accepted, at p 0.41–0.98, 1–4 s after pressing "I'm ready".
 - Showing HELLO while the lesson asked for PLEASE: 14 of 14 windows were rejected (p = 0.00), then "Time's up" and requeue.
 - The margin rule held back MOM vs GRANDMA (0.22 vs 0.20) until a clear MOM (0.41 vs 0.15).
 
 **What a probability is not:** the model ranks 250 signs. It cannot grade
 handshape, location or movement separately, and it weighs handshape and
-location more than movement *direction* (a sign played backwards often still
+location more than movement _direction_ (a sign played backwards often still
 matches). The UI therefore says "the model is N% sure" and shows its top
 guesses, never a quality grade.
 
@@ -277,12 +283,12 @@ including NaN coordinates, gets a 422 that never echoes landmark data back.
 
 ## Testing
 
-| Command | What it covers | Result |
-| --- | --- | --- |
-| `cd backend && uv run pytest` | Layout; model output; **real PopSign fixtures predicted and accepted**, also mirrored; wrong signs rejected; gates; trimming; margin rule; API contract and validation; lesson content only uses model labels and has clips on disk; accounts, XP ladder, friends, leaderboard privacy and deletion against a live SpacetimeDB (skipped if none is running) | 48 passed |
-| `cd frontend && npm test` | Lesson queue, requeue and XP rules; persistence, corruption and storage failures; segmenter timing; API client errors and timeouts; landmark conversion; framing and lighting hints; content integrity | 39 passed |
-| `cd frontend && npm run typecheck && npm run build` | Strict TypeScript, production build | OK |
-| `cd frontend && npm run e2e` | Real browser, real MediaPipe, real model: accept, reject and requeue, resume after reload, full lesson completion with 75 XP, camera denied, server down | 5 of 5 passed |
+| Command                                             | What it covers                                                                                                                                                                                                                                                                                                                                              | Result        |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `cd backend && uv run pytest`                       | Layout; model output; **real PopSign fixtures predicted and accepted**, also mirrored; wrong signs rejected; gates; trimming; margin rule; API contract and validation; lesson content only uses model labels and has clips on disk; accounts, XP ladder, friends, leaderboard privacy and deletion against a live SpacetimeDB (skipped if none is running) | 48 passed     |
+| `cd frontend && npm test`                           | Lesson queue, requeue and XP rules; persistence, corruption and storage failures; segmenter timing; API client errors and timeouts; landmark conversion; framing and lighting hints; content integrity                                                                                                                                                      | 39 passed     |
+| `cd frontend && npm run typecheck && npm run build` | Strict TypeScript, production build                                                                                                                                                                                                                                                                                                                         | OK            |
+| `cd frontend && npm run e2e`                        | Real browser, real MediaPipe, real model: accept, reject and requeue, resume after reload, full lesson completion with 75 XP, camera denied, server down                                                                                                                                                                                                    | 5 of 5 passed |
 
 The end-to-end test and the evaluation scripts need the optional data tooling:
 
@@ -305,12 +311,12 @@ A fake webcam proves the pipeline, but only real people prove the product.
 Before the demo, have each teammate run this in Chrome:
 
 1. Start both servers. Open the app, allow the camera, and start **First words**. The live view should show white hand skeletons on your hands.
-2. **Hello:** watch the demo, press *I'm ready*, sign HELLO. Expect "Nice signing!" within ~1–3 s and +10 XP.
-3. **Negative:** on *Please*, sign HELLO or wave randomly for 20 s. It must not pass. After "Time's up", Please moves to the end.
+2. **Hello:** watch the demo, press _I'm ready_, sign HELLO. Expect "Nice signing!" within ~1–3 s and +10 XP.
+3. **Negative:** on _Please_, sign HELLO or wave randomly for 20 s. It must not pass. After "Time's up", Please moves to the end.
 4. Hold one hand still in view: "Show the whole movement". Drop your hands: no scoring. Step out of frame or cover your face: framing hints.
 5. Dim the lights or sit with a window behind you: lighting hint.
 6. Sign with your **other** hand: it should still be accepted.
-7. Refresh mid-lesson: the dashboard shows *Pick up where you left off* and resumes on the same sign.
+7. Refresh mid-lesson: the dashboard shows _Pick up where you left off_ and resumes on the same sign.
 8. Stop the backend: banner and disabled start. Restart it and press Retry.
 9. Block the camera in site settings: explanation, then practice without camera (no XP).
 10. Finish the lesson: completion screen and XP on the dashboard. Replay it: half XP, no bonus.
@@ -338,8 +344,8 @@ switching cameras.
 - **No password recovery or federated login.** Lesson completion summaries and
   personal lesson history remain device-local; account leaderboard XP is stored
   separately. Recognition landmarks are supplied by the browser, so the server
-  validates predictions but cannot prevent replay of a recorded sign. *Reset
-  progress* clears local data; account deletion removes server-side data.
+  validates predictions but cannot prevent replay of a recorded sign. _Reset
+  progress_ clears local data; account deletion removes server-side data.
 - **No dispute button or streaks.**
 - No text descriptions of signs: we only show authentic demonstrations rather
   than writing unreviewed instructions. A Deaf reviewer sign-off is still
