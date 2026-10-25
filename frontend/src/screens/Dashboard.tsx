@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '../components/Button';
 import { IconArrowRight, IconBolt, IconCamera, IconCheck, IconHand, IconStar } from '../components/Icons';
 import { Logo } from '../components/Logo';
@@ -6,6 +6,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { attribution, lessons, signLabel } from '../content';
 import type { Progress } from '../lib/progress';
 import styles from './Dashboard.module.css';
+import { accountApi, type AccountProfile, type LeaderboardRow } from '../lib/accountApi';
 
 /** Review needs a few learned signs to be worth it. */
 const MIN_REVIEW_SIGNS = 3;
@@ -17,21 +18,45 @@ interface Props {
   onResume: () => void;
   onReview: () => void;
   onReset: () => void;
+  account: AccountProfile | null;
+  onManageAccount: () => void;
+  leaderboardRefresh: number;
 }
 
-export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onReview, onReset }: Props) {
+export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onReview, onReset, account, onManageAccount, leaderboardRefresh }: Props) {
   const [confirmReset, setConfirmReset] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardError, setLeaderboardError] = useState(false);
+  const [manualRefresh, setManualRefresh] = useState(0);
   const next = lessons.find((lesson) => !progress.completed[lesson.id]);
   const active = progress.active;
   const completedCount = lessons.filter((lesson) => progress.completed[lesson.id]).length;
+
+  useEffect(() => {
+    if (!account) {
+      setLeaderboard([]);
+      setLeaderboardError(false);
+      return;
+    }
+    let active = true;
+    setLeaderboardLoading(true);
+    setLeaderboardError(false);
+    void accountApi.leaderboard()
+      .then((rows) => { if (active) setLeaderboard(rows); })
+      .catch(() => { if (active) setLeaderboardError(true); })
+      .finally(() => { if (active) setLeaderboardLoading(false); });
+    return () => { active = false; };
+  }, [account?.id, account?.xp, account?.leaderboardVisible, account?.friendsOnly, leaderboardRefresh, manualRefresh]);
 
   return (
     <div className={styles.page}>
       <header className={styles.topbar}>
         <Logo />
+        <Button variant="secondary" onClick={onManageAccount}>{account ? account.displayName : 'Leaderboard'}</Button>
         <div className={styles.stats}>
-          <span className={styles.stat} title="Total XP">
-            <IconBolt className={styles.bolt} /> {progress.xp} XP
+          <span className={styles.stat} title={account ? 'Server tracked leaderboard XP' : 'XP on this device'}>
+            <IconBolt className={styles.bolt} /> {account ? account.xp : progress.xp} XP
           </span>
           <span className={styles.stat} title="Signs learned">
             <IconHand /> {progress.learned.length} signs
@@ -79,6 +104,47 @@ export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onRev
                 </Button>
               )}
             </>
+          )}
+        </section>
+
+        <section className={styles.leaderboard} aria-labelledby="leaderboard-heading">
+          <div className={styles.leaderboardHeader}>
+            <div>
+              <p className={styles.leaderboardKicker}>Community</p>
+              <h2 id="leaderboard-heading" className={styles.sectionTitle}>
+                {account?.friendsOnly ? 'Friends leaderboard' : 'Leaderboard'}
+              </h2>
+            </div>
+            {account && <Button variant="ghost" onClick={() => setManualRefresh((n) => n + 1)}>Refresh</Button>}
+          </div>
+          {!account ? (
+            <div className={styles.leaderboardEmpty}>
+              <p>Sign in to see the leaderboard. Your rank stays hidden until you opt in.</p>
+              <Button variant="secondary" onClick={onManageAccount}>Sign in or create an account</Button>
+            </div>
+          ) : leaderboardLoading ? (
+            <p className={styles.leaderboardEmpty} role="status">Loading leaderboard…</p>
+          ) : leaderboardError ? (
+            <p className={styles.leaderboardEmpty} role="alert">Couldn’t load the leaderboard. Try refreshing.</p>
+          ) : leaderboard.length ? (
+            <ol className={styles.leaderboardList}>
+              {leaderboard.map((row) => (
+                <li key={`${row.rank}-${row.displayName}`} className={`${styles.leaderboardRow} ${row.you ? styles.currentLearner : ''}`}>
+                  <span className={styles.leaderboardRank}>{row.rank}</span>
+                  <span className={styles.leaderboardName}>{row.displayName}{row.you ? ' (you)' : ''}</span>
+                  <span className={styles.leaderboardXp}><IconBolt className={styles.bolt} /> {row.xp} XP</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className={styles.leaderboardEmpty}>
+              <p>{account.friendsOnly
+                ? 'No friends are on the leaderboard yet. Add friends from your account settings.'
+                : account.leaderboardVisible
+                  ? 'No learners have opted in yet. You’ll show up here when your score is ranked.'
+                  : 'No ranked learners yet. Your score is private until you opt in.'}</p>
+              <Button variant="secondary" onClick={onManageAccount}>Leaderboard settings</Button>
+            </div>
           )}
         </section>
 

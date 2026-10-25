@@ -5,6 +5,9 @@ import { clearProgress, EMPTY_PROGRESS, loadProgress, recordCompletion, saveProg
 import { CompleteScreen } from './screens/CompleteScreen';
 import { Dashboard } from './screens/Dashboard';
 import { LessonScreen } from './screens/LessonScreen';
+import { AccountAccess } from './screens/AccountAccess';
+import { AccountCenter } from './screens/AccountCenter';
+import { accountApi, type AccountProfile } from './lib/accountApi';
 
 const REVIEW_ID = 'review';
 const REVIEW_SIZE = 6;
@@ -43,6 +46,14 @@ export function App() {
   const [initial] = useState(restore);
   const [progress, setProgress] = useState(initial.progress);
   const [screen, setScreen] = useState<Screen>(initial.screen);
+  const [account, setAccount] = useState<AccountProfile | null>(null);
+  const [accountPanel, setAccountPanel] = useState(false);
+  const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
+
+  useEffect(() => { void accountApi.me().then(setAccount).catch(() => setAccount(null)); }, []);
+  useEffect(() => {
+    if (screen.name === 'dashboard' && account) void accountApi.me().then(setAccount).catch(() => setAccount(null));
+  }, [screen.name]);
 
   useEffect(() => saveProgress(progress), [progress]);
 
@@ -101,6 +112,7 @@ export function App() {
   }
 
   return (
+    <>
     <Dashboard
       progress={progress}
       activeTitle={progress.active ? lessonTitle(progress.active.lessonId) : null}
@@ -111,6 +123,18 @@ export function App() {
         clearProgress();
         setProgress(EMPTY_PROGRESS);
       }}
+      account={account}
+      onManageAccount={() => setAccountPanel(true)}
+      leaderboardRefresh={leaderboardRefresh}
     />
+    {accountPanel && (account
+      ? <AccountCenter account={account} onClose={() => { setAccountPanel(false); setLeaderboardRefresh((n) => n + 1); }} onAccountChange={setAccount}
+          onSignOut={() => { void accountApi.logout().finally(() => { setAccount(null); setAccountPanel(false); }); }}
+          onDelete={() => { void accountApi.deleteAccount().finally(() => { setAccount(null); setAccountPanel(false); }); }} />
+      : <AccountAccess onGuest={() => setAccountPanel(false)} onSubmit={async (name, password, register) => {
+          const user = register ? await accountApi.register(name, password) : await accountApi.login(name, password);
+          setAccount(user); setAccountPanel(false);
+        }} />)}
+    </>
   );
 }

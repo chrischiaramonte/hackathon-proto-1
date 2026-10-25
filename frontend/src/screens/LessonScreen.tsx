@@ -10,7 +10,8 @@ import { SignDemo } from '../components/SignDemo';
 import { signLabel, signs } from '../content';
 import { useRecognizer, type CaptureMode, type Recognizer } from '../hooks/useRecognizer';
 import { isServerReady, type RecognitionResult, type RecognitionStatus } from '../lib/api';
-import { answer, currentSign, isComplete, type LessonState, type Outcome } from '../lib/lessonEngine';
+import { answer, currentSign, isComplete, isReversePrompt, type LessonState, type Outcome } from '../lib/lessonEngine';
+import { accountApi } from '../lib/accountApi';
 import styles from './LessonScreen.module.css';
 
 /** Auto mode: how long the learner has to sign before it counts as a miss. */
@@ -61,6 +62,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   const [mode, setMode] = useState<CaptureMode>('auto');
   const [server, setServer] = useState<'checking' | 'ok' | 'down'>('checking');
   const [cameraReady, setCameraReady] = useState(false);
+  const [englishAnswer, setEnglishAnswer] = useState('');
   const readyRef = useRef<HTMLButtonElement>(null);
   // Set synchronously, so an answer arriving just as Skip is pressed can't count twice.
   const answered = useRef(false);
@@ -69,6 +71,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   const sign = signId ? signs[signId] : undefined;
   const total = lesson.done.length + lesson.queue.length;
   const practising = phase.name === 'practice';
+  const reverse = isReversePrompt(lesson);
 
   const checkServer = useCallback(() => {
     setServer('checking');
@@ -80,7 +83,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   }, [lesson.scored, checkServer]);
 
   // Focus "I'm ready" for each new sign, and again once it becomes enabled.
-  const canStart = !lesson.scored || (server === 'ok' && cameraReady);
+  const canStart = reverse || !lesson.scored || (server === 'ok' && cameraReady);
   useEffect(() => {
     if (phase.name === 'learn' && canStart) readyRef.current?.focus();
   }, [phase.name, signId, canStart]);
@@ -100,6 +103,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
 
   const recognizer = useRecognizer({
     target: currentSign(lesson),
+    lessonId: lesson.lessonId,
     enabled: practising && lesson.scored,
     mode,
     onAccepted: (result) => {
@@ -114,24 +118,31 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
 
   // Auto mode: running out of time counts as a miss.
   useEffect(() => {
-    if (phase.name !== 'practice' || mode !== 'auto' || !lesson.scored) return;
+    if (phase.name !== 'practice' || mode !== 'auto' || !lesson.scored || reverse) return;
     const id = setTimeout(() => finish('incorrect', lastResult.current), phase.startedAt + PRACTICE_MS - Date.now());
     return () => clearTimeout(id);
-  }, [phase, mode, lesson.scored, finish]);
+  }, [phase, mode, lesson.scored, reverse, finish]);
 
   // Manual mode: a limited number of scored tries.
   useEffect(() => {
-    if (practising && mode === 'manual' && recognizer.misses >= MANUAL_TRIES) finish('incorrect', lastResult.current);
-  }, [practising, mode, recognizer.misses, finish]);
+    if (practising && !reverse && mode === 'manual' && recognizer.misses >= MANUAL_TRIES) finish('incorrect', lastResult.current);
+  }, [practising, reverse, mode, recognizer.misses, finish]);
 
   // Losing the camera mid-attempt is not the learner's fault: back to watching, no miss.
   useEffect(() => {
-    if (practising && lesson.scored && !cameraReady) setPhase({ name: 'learn' });
-  }, [practising, lesson.scored, cameraReady]);
+    if (practising && !reverse && lesson.scored && !cameraReady) setPhase({ name: 'learn' });
+  }, [practising, reverse, lesson.scored, cameraReady]);
 
   const startPractice = () => {
     answered.current = false;
+    setEnglishAnswer('');
     setPhase({ name: 'practice', startedAt: Date.now() });
+  };
+  const submitEnglish = () => {
+    const normalize = (value: string) => value.trim().toLowerCase().replace(/[?.!,]/g, '').replace(/\s+/g, ' ');
+    const correct = normalize(englishAnswer) === normalize(sign?.label ?? '');
+    if (correct && sign) void accountApi.translationAnswer(lesson.lessonId, sign.id, englishAnswer).catch(() => undefined);
+    finish(correct ? 'correct' : 'incorrect', null);
   };
   const usePracticeMode = () => onChange({ ...lesson, scored: false });
 
@@ -164,7 +175,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
           </Button>
         </div>
       )}
-      {lesson.scored && server === 'down' && (
+      {!reverse && lesson.scored && server === 'down' && (
         <div className={`${styles.banner} ${styles.warning}`} role="alert">
           <span>Can’t reach the recognition server, so signs can’t be checked right now.</span>
           <span className={styles.bannerActions}>
@@ -181,16 +192,37 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
       <main className={styles.stage}>
         <div className={styles.prompt}>
           <p className={styles.eyebrow}>
-            {phase.name === 'learn' ? (missedBefore ? 'Let’s try this one again' : 'Watch the sign') : 'Your turn: sign'}
+            {reverse
+              ? phase.name === 'learn' ? 'What does this sign mean?' : 'Type the English word or phrase'
+              : phase.name === 'learn' ? (missedBefore ? 'Let’s try this one again' : 'Watch the sign') : 'Your turn: sign'}
           </p>
-          <h1 className={styles.word}>{sign.label}</h1>
+          {!reverse && <h1 className={styles.word}>{sign.label}</h1>}
         </div>
 
         <div className={styles.panels}>
           <SignDemo key={sign.id} sign={sign} compact={phase.name !== 'learn'} />
 
           <div className={styles.practice}>
-            {lesson.scored ? (
+            {reverse ? (
+              <div className={styles.translationPractice}>
+                {phase.name === 'learn' && <p>Watch the sign, then type the English meaning.</p>}
+                {practising && (
+                  <form onSubmit={(event) => { event.preventDefault(); submitEnglish(); }}>
+                    <label htmlFor="english-answer">English meaning</label>
+                    <input
+                      id="english-answer"
+                      type="text"
+                      autoComplete="off"
+                      value={englishAnswer}
+                      onChange={(event) => setEnglishAnswer(event.target.value)}
+                      placeholder="Type the meaning"
+                      autoFocus
+                    />
+                    <Button type="submit" size="lg" disabled={!englishAnswer.trim()} className={styles.primaryAction}>Check answer</Button>
+                  </form>
+                )}
+              </div>
+            ) : lesson.scored ? (
               <CameraView
                 active={practising}
                 onFrame={recognizer.pushFrame}
@@ -216,10 +248,10 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
               </div>
             )}
 
-            {practising && lesson.scored && mode === 'auto' && (
+            {!reverse && practising && lesson.scored && mode === 'auto' && (
               <Countdown key={phase.startedAt} startedAt={phase.startedAt} durationMs={PRACTICE_MS} />
             )}
-            {practising && lesson.scored && mode === 'manual' && (
+            {!reverse && practising && lesson.scored && mode === 'manual' && (
               <p className={styles.tries}>
                 Try {Math.min(recognizer.misses + 1, MANUAL_TRIES)} of {MANUAL_TRIES}
               </p>
@@ -241,7 +273,9 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
               disabled={!canStart}
               className={styles.primaryAction}
             >
-              {!lesson.scored
+              {reverse
+                ? 'I’m ready'
+                : !lesson.scored
                 ? 'I’m ready'
                 : server === 'checking'
                   ? 'Connecting…'
@@ -252,7 +286,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
                       : 'Getting camera ready…'}
             </Button>
           )}
-          {practising && (
+          {practising && !reverse && (
             <>
               <Button variant="secondary" onClick={() => finish('incorrect', lastResult.current, true)}>
                 Skip
@@ -312,8 +346,10 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
         ) : (
           <FeedbackSheet
             tone="danger"
-            title={phase.skipped ? 'Skipped' : mode === 'manual' ? 'Not this time' : 'Time’s up'}
-            detail={`We’ll come back to “${sign.label}” at the end of the lesson.${missDetail(phase.result, sign.id)}`}
+            title={reverse ? 'Not quite' : phase.skipped ? 'Skipped' : mode === 'manual' ? 'Not this time' : 'Time’s up'}
+            detail={reverse
+              ? `The answer is “${sign.label}”. We’ll come back to this sign at the end of the lesson.`
+              : `We’ll come back to “${sign.label}” at the end of the lesson.${missDetail(phase.result, sign.id)}`}
             onContinue={continueLesson}
           />
         ))}

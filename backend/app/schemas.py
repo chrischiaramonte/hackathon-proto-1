@@ -34,6 +34,7 @@ class LandmarkFrame(CamelModel):
 class RecognizeRequest(CamelModel):
     target: str = Field(description="sign gloss from GET /api/signs, e.g. 'thankyou'")
     frames: list[LandmarkFrame] = Field(min_length=1, max_length=MAX_FRAMES)
+    lesson_id: str | None = Field(default=None, max_length=40, description="Current lesson; XP is awarded only to signed-in accounts")
 
 
 class Prediction(CamelModel):
@@ -51,6 +52,7 @@ class RecognizeResponse(CamelModel):
     frames_received: int
     frames_used: int
     hand_frames: int
+    xp_awarded: int = 0
 
 
 class SignsResponse(CamelModel):

@@ -15,6 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.classifier import SignClassifier
+from app.accounts import award_for_accepted_sign, init_db, optional_user, router as account_router
 from app.landmarks import frame_to_rows
 from app.recognition import decide
 from app.schemas import (
@@ -30,12 +31,14 @@ log = logging.getLogger("uvicorn.error")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    init_db()
     app.state.classifier = SignClassifier()
     log.info("Loaded sign classifier with %d signs", len(app.state.classifier.labels))
     yield
 
 
 app = FastAPI(title="ASL sign recognition", lifespan=lifespan)
+app.include_router(account_router)
 
 
 @app.exception_handler(RequestValidationError)
@@ -68,6 +71,8 @@ def recognize(body: RecognizeRequest, request: Request) -> RecognizeResponse:
 
     frames = np.stack([frame_to_rows(f.face, f.left_hand, f.pose, f.right_hand) for f in body.frames])
     decision = decide(classifier, frames, body.target)
+    user = optional_user(request.cookies.get("signspark_session"))
+    xp_awarded = award_for_accepted_sign(user["id"], body.lesson_id, body.target) if user and body.lesson_id and decision.status == "accepted" else 0
     log.info(
         "recognize target=%s status=%s p=%s frames=%d",
         body.target,
@@ -85,4 +90,5 @@ def recognize(body: RecognizeRequest, request: Request) -> RecognizeResponse:
         frames_received=len(body.frames),
         frames_used=decision.frames_used,
         hand_frames=decision.hand_frames,
+        xp_awarded=xp_awarded,
     )
