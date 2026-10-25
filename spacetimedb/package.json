@@ -1,0 +1,17 @@
+{
+  "name": "signspark-spacetimedb",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "spacetime build",
+    "typecheck": "tsc",
+    "publish:local": "spacetime publish --server local --yes signspark"
+  },
+  "dependencies": {
+    "spacetimedb": "2.13.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

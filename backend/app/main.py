@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.classifier import SignClassifier
-from app.accounts import award_for_accepted_sign, init_db, optional_user, router as account_router
+from app.accounts import award_for_accepted_sign, optional_user, router as account_router
 from app.landmarks import frame_to_rows
 from app.recognition import decide
 from app.schemas import (
@@ -31,7 +31,6 @@ log = logging.getLogger("uvicorn.error")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    init_db()
     app.state.classifier = SignClassifier()
     log.info("Loaded sign classifier with %d signs", len(app.state.classifier.labels))
     yield

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../components/Button';
-import { IconArrowRight, IconBolt, IconCamera, IconCheck, IconHand, IconStar } from '../components/Icons';
+import { IconArrowRight, IconBolt, IconCamera, IconCheck, IconStar } from '../components/Icons';
 import { Logo } from '../components/Logo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { ProgressBar } from '../components/ProgressBar';
@@ -69,9 +69,6 @@ export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onRev
         <div className={styles.stats}>
           <span className={styles.stat} title={account ? 'Server tracked leaderboard XP' : 'XP on this device'}>
             <IconBolt className={styles.bolt} /> {account ? account.xp : progress.xp} XP
-          </span>
-          <span className={styles.stat} title="Signs learned">
-            <IconHand /> {progress.learned.length} signs
           </span>
           <ThemeToggle />
         </div>

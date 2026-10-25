@@ -1,6 +1,7 @@
 # Dependencies and build output
 node_modules/
 frontend/dist/
+spacetimedb/dist/
 frontend/e2e/output/
 # Copied from node_modules by frontend/scripts/copy-mediapipe.mjs on npm install
 frontend/public/mediapipe/
@@ -14,3 +15,4 @@ backend/models/
 backend/data/
 
 .DS_Store
+.env.local
