@@ -130,6 +130,12 @@ export const init = spacetimedb.init(ctx => {
   ctx.db.admin.insert({ identity: ctx.sender });
 });
 
+// Lets a teammate's backend use their own login: `spacetime call <db> add_admin <identity>`.
+export const addAdmin = spacetimedb.reducer({ identity: t.identity() }, (ctx, { identity }) => {
+  requireAdmin(ctx, ctx.sender);
+  if (!ctx.db.admin.identity.find(identity)) ctx.db.admin.insert({ identity });
+});
+
 export const register = spacetimedb.procedure(
   { displayName: t.string(), passwordHash: t.string(), tokenHash: t.string() },
   Profile,

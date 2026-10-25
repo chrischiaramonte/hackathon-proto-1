@@ -131,12 +131,20 @@ contract is unchanged.
 
 Configuration: `SIGNSPARK_STDB_URL` (default `https://maincloud.spacetimedb.com`),
 `SIGNSPARK_STDB_DB` (default `calhack-r0hwe`) and `SIGNSPARK_STDB_TOKEN`
-(default: the token in `~/.config/spacetime/cli.toml`; it must belong to the
-identity that published the database, which `init` records as admin). If the
+(default: the token in `~/.config/spacetime/cli.toml`; it must belong to an
+identity in the module's `admin` table). If the
 database is down, account routes return 503 and recognition still works without
 awarding XP. To work offline, run `spacetime start`, publish with
 `--server local --delete-data ... signspark` and set
 `SIGNSPARK_STDB_URL=http://127.0.0.1:3000 SIGNSPARK_STDB_DB=signspark`.
+
+**Teammates sharing the database:** `init` makes the publisher the first
+admin. Each teammate runs `spacetime login`, then `spacetime login show`, and
+sends their identity to an existing admin, who runs
+`spacetime call --server maincloud calhack-r0hwe add_admin <identity>`. Their
+backend then works with their own login and no token sharing. Maincloud website
+roles don't grant this. Never republish with `--delete-data`: it wipes all
+accounts and makes only the publisher an admin again.
 
 ## Repository layout
 
