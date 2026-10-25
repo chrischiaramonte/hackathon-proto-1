@@ -299,7 +299,9 @@ export function Dashboard({
                 <>
                   <p className={styles.kicker}>
                     {completedCount === 0
-                      ? "Learn ASL with your webcam"
+                      ? account
+                        ? `Hello ${account.displayName}`
+                        : "Learn ASL together"
                       : "Keep going"}
                   </p>
                   <h1 className={styles.heroTitle}>
