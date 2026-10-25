@@ -8,6 +8,44 @@
   overflow: hidden;
 }
 
+/* A recognised sign lights up the learner's own camera: a green ring that
+   pulses out once, and green light spilling in from the edges. */
+.camera[data-success] {
+  box-shadow:
+    0 0 0 5px var(--success),
+    0 0 36px 6px rgb(31 174 107 / 45%);
+  animation: success-pulse 900ms ease-out;
+}
+
+.camera[data-success]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(ellipse at center, transparent 45%, rgb(31 174 107 / 45%) 100%);
+  pointer-events: none;
+  animation: success-light 600ms ease-out both;
+}
+
+@keyframes success-pulse {
+  0% {
+    box-shadow:
+      0 0 0 5px var(--success),
+      0 0 0 5px rgb(31 174 107 / 70%);
+  }
+  100% {
+    box-shadow:
+      0 0 0 5px var(--success),
+      0 0 0 34px rgb(31 174 107 / 0%);
+  }
+}
+
+@keyframes success-light {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Mirror the preview (and the overlay drawn in camera coordinates) so it
    behaves like a mirror. MediaPipe still receives the unmirrored frames. */
 .video,

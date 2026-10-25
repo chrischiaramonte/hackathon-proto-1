@@ -41,7 +41,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--brand);
+  color: var(--brand-text);
 }
 
 .title {
@@ -94,6 +94,11 @@
   color: var(--stat-color);
 }
 
+/* The stat colours are fills (white labels sit on them); on a dark card the value reads in ink. */
+:global([data-theme='dark']) .statValue {
+  color: var(--ink);
+}
+
 .statSub {
   font-size: 0.72rem;
   font-weight: 700;
@@ -101,11 +106,11 @@
 }
 
 .xp {
-  --stat-color: #e0a000;
+  --stat-color: #8a6100;
 }
 
 .accuracy {
-  --stat-color: var(--success);
+  --stat-color: var(--success-fill);
 }
 
 .time {
@@ -132,7 +137,7 @@
 }
 
 .check {
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .signName {

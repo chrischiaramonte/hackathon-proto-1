@@ -19,7 +19,8 @@ export function Countdown({ startedAt, durationMs }: Props) {
     <ProgressBar
       value={left}
       max={durationMs}
-      label={`${seconds} seconds left`}
+      label="Time left to sign"
+      valueText={`${seconds} seconds left`}
       tone={left < 5000 ? 'warning' : 'brand'}
     />
   );

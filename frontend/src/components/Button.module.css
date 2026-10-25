@@ -52,13 +52,13 @@
 }
 
 .success {
-  --face: var(--success);
+  --face: var(--success-fill);
   --edge: var(--success-dark);
 }
 
 .danger {
-  --face: var(--danger);
-  --edge: var(--danger-dark);
+  --face: var(--danger-dark);
+  --edge: #9c2a31;
 }
 
 .secondary {

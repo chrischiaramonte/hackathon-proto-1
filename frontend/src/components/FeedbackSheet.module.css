@@ -16,14 +16,12 @@
   color: var(--danger-dark);
 }
 
-@media (prefers-color-scheme: dark) {
-  .success {
-    color: #6ee3a8;
-  }
+:global([data-theme='dark']) .success {
+  color: #6ee3a8;
+}
 
-  .danger {
-    color: #ff9aa0;
-  }
+:global([data-theme='dark']) .danger {
+  color: #ff9aa0;
 }
 
 .inner {
@@ -58,7 +56,6 @@
 
 .detail {
   font-weight: 700;
-  opacity: 0.85;
 }
 
 .xp {
@@ -68,7 +65,7 @@
   padding: 0.35rem 0.8rem;
   border-radius: 999px;
   background: var(--surface);
-  color: #b37e00;
+  color: var(--xp-text);
   font-weight: 900;
   animation: pop 420ms cubic-bezier(0.2, 1.6, 0.4, 1) 200ms both;
 }

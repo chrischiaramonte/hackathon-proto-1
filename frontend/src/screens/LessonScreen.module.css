@@ -64,7 +64,7 @@
 
 .info {
   background: var(--brand-soft);
-  color: var(--brand);
+  color: var(--brand-text);
 }
 
 .warning {
@@ -95,7 +95,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--brand);
+  color: var(--brand-text);
 }
 
 .word {
@@ -103,6 +103,11 @@
   font-weight: 900;
   line-height: 1.1;
   letter-spacing: -0.01em;
+}
+
+/* Focus is moved here only to announce the new step; it is not a control. */
+.word:focus {
+  outline: none;
 }
 
 .panels {
@@ -222,12 +227,6 @@
   color: #fff;
 }
 
-.tries {
-  font-weight: 800;
-  color: var(--ink-2);
-  text-align: center;
-}
-
 .footer {
   position: fixed;
   inset: auto 0 0;
@@ -248,22 +247,6 @@
 .primaryAction {
   min-width: 200px;
   margin-left: auto;
-}
-
-.modeToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--ink-2);
-  cursor: pointer;
-}
-
-.modeToggle input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--brand);
 }
 
 @media (max-width: 760px) {

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { IconArrowRight, IconBolt, IconCamera, IconCheck, IconHand, IconStar } from '../components/Icons';
 import { Logo } from '../components/Logo';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { ProgressBar } from '../components/ProgressBar';
 import { attribution, lessons, signLabel } from '../content';
 import type { Progress } from '../lib/progress';
@@ -25,6 +26,17 @@ interface Props {
 
 export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onReview, onReset, account, onManageAccount, leaderboardRefresh }: Props) {
   const [confirmReset, setConfirmReset] = useState(false);
+  // The reset button and its confirmation replace each other; keep focus with whichever is showing.
+  const resetRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const resetTouched = useRef(false);
+  useEffect(() => {
+    if (resetTouched.current) (confirmReset ? cancelRef : resetRef).current?.focus();
+  }, [confirmReset]);
+  const showResetConfirm = (show: boolean) => {
+    resetTouched.current = true;
+    setConfirmReset(show);
+  };
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState(false);
@@ -61,6 +73,7 @@ export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onRev
           <span className={styles.stat} title="Signs learned">
             <IconHand /> {progress.learned.length} signs
           </span>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -181,9 +194,9 @@ export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onRev
                   <Button
                     variant={record ? 'secondary' : 'primary'}
                     onClick={() => (inProgress ? onResume() : onOpenLesson(lesson.id))}
-                    aria-label={`${inProgress ? 'Continue' : record ? 'Practise again' : 'Start'}: ${lesson.title}`}
+                    aria-label={`${inProgress ? 'Continue' : record ? 'Practice again' : 'Start'}: ${lesson.title}`}
                   >
-                    {inProgress ? 'Continue' : record ? 'Practise' : 'Start'}
+                    {inProgress ? 'Continue' : record ? 'Practice' : 'Start'}
                   </Button>
                 </li>
               );
@@ -240,17 +253,17 @@ export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onRev
               variant="danger"
               onClick={() => {
                 onReset();
-                setConfirmReset(false);
+                showResetConfirm(false);
               }}
             >
               Erase
             </Button>
-            <Button variant="ghost" onClick={() => setConfirmReset(false)}>
+            <Button ref={cancelRef} variant="ghost" onClick={() => showResetConfirm(false)}>
               Cancel
             </Button>
           </span>
         ) : (
-          <Button variant="ghost" onClick={() => setConfirmReset(true)}>
+          <Button ref={resetRef} variant="ghost" onClick={() => showResetConfirm(true)}>
             Reset progress
           </Button>
         )}

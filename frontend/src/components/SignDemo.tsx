@@ -55,16 +55,25 @@ export function SignDemo({ sign, compact = false }: Props) {
         )}
       </div>
       <div className={styles.controls}>
-        <button type="button" className={styles.control} onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Play' : 'Pause'}>
+        <button type="button" className={styles.control} onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Play demonstration' : 'Pause demonstration'}>
           {paused ? <IconPlay /> : <IconPause />}
         </button>
-        <button type="button" className={styles.control} aria-pressed={slow} onClick={() => setSlow((s) => !s)}>
+        <button
+          type="button"
+          className={styles.control}
+          aria-pressed={slow}
+          aria-label={compact ? 'Slow motion' : undefined}
+          title="Slow motion"
+          onClick={() => setSlow((s) => !s)}
+        >
           <IconTurtle /> {compact ? '' : 'Slow'}
         </button>
         {sign.clips.length > 1 && (
           <button
             type="button"
             className={styles.control}
+            aria-label={`Another signer (${clipIndex + 1}/${sign.clips.length})`}
+            title="Show another signer"
             onClick={() => {
               setFailed(false);
               setClipIndex((i) => (i + 1) % sign.clips.length);
