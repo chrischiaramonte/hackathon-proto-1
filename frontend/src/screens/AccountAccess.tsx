@@ -37,7 +37,7 @@ export function AccountAccess({ onSubmit, onGuest }: Props) {
         {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
         <Button type="submit" size="lg" disabled={busy}>{busy ? 'Please wait…' : register ? 'Create account' : 'Sign in'}</Button>
       </form>
-      <p style={{ marginTop: 16 }}>{register ? 'Already have an account?' : 'New to SignSpark?'}{' '}
+      <p style={{ marginTop: 16 }}>{register ? 'Already have an account?' : 'New to CoSign?'}{' '}
         <button type="button" onClick={() => { setRegister(!register); setError(''); }} style={linkButton}>{register ? 'Sign in' : 'Create account'}</button>
       </p>
       <Button variant="ghost" onClick={onGuest}>Continue without an account</Button>

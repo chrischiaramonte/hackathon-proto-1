@@ -1,4 +1,4 @@
-# SignSpark: learn ASL with your webcam
+# CoSign: learn ASL with your webcam
 
 A Duolingo-style web app for family and friends of Deaf people. Watch a Deaf
 signer demonstrate a sign, sign it back to your webcam, and a pretrained
@@ -96,7 +96,7 @@ awards leaderboard XP only after an accepted recognition result or validated
 translation answer, with repeat awards of 10, 5, 2, then 0 XP per sign and
 lesson. Account deletion cascades through sessions, XP and friend links.
 Password recovery is not available yet. Production deployments must use HTTPS
-and set `SIGNSPARK_COOKIE_SECURE=1`.
+and set `COSIGN_COOKIE_SECURE=1`.
 
 **When things go wrong:**
 

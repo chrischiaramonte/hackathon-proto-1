@@ -21,7 +21,7 @@ const PRACTICE_MS = 20_000;
 type Phase =
   | { name: 'learn' }
   | { name: 'practice'; startedAt: number }
-  | { name: 'feedback'; sign: string; outcome: Outcome; xp: number; result: RecognitionResult | null; skipped: boolean };
+  | { name: 'feedback'; sign: string; outcome: Outcome; xp: number; result: RecognitionResult | null; skipped: boolean; reverse: boolean };
 
 const RESULT_TEXT: Record<Exclude<RecognitionStatus, 'accepted'>, string> = {
   close: 'So close! Try it again.',
@@ -68,9 +68,16 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
 
   const signId = phase.name === 'feedback' ? phase.sign : currentSign(lesson);
   const sign = signId ? signs[signId] : undefined;
-  const total = lesson.done.length + lesson.queue.length;
   const practicing = phase.name === 'practice';
-  const reverse = isReversePrompt(lesson);
+  const reverse = phase.name === 'feedback' ? phase.reverse : isReversePrompt(lesson);
+  const reviewPhase = lesson.reviewPhase === true;
+  const totalTerms = reviewPhase
+    ? lesson.done.length + lesson.queue.length
+    : (lesson.signedOnce?.length ?? 0) + lesson.queue.length;
+  const total = totalTerms * 2;
+  const completedQuestions = reviewPhase
+    ? lesson.done.length * 2 + lesson.queue.filter((term) => lesson.questionPhases?.[term] === 'translation').length
+    : (lesson.signedOnce?.length ?? 0);
 
   const checkServer = useCallback(() => {
     setServer('checking');
@@ -99,9 +106,10 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
       const current = currentSign(lesson);
       if (!current || answered.current) return;
       answered.current = true;
+      const reverse = isReversePrompt(lesson);
       const next = answer(lesson, outcome);
       onChange(next);
-      setPhase({ name: 'feedback', sign: current, outcome, xp: next.xp - lesson.xp, result, skipped });
+      setPhase({ name: 'feedback', sign: current, outcome, xp: next.xp - lesson.xp, result, skipped, reverse });
       // Only answers the model actually judged get a sound; skips and unscored practice stay quiet.
       if (lesson.scored && !skipped) (outcome === 'correct' ? playCorrect : playWrong)();
     },
@@ -111,7 +119,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   const recognizer = useRecognizer({
     target: currentSign(lesson),
     lessonId: lesson.lessonId,
-    enabled: practicing && lesson.scored,
+    enabled: practicing && lesson.scored && !reverse,
     onAccepted: (result) => {
       if (practicing) finish('correct', result);
     },
@@ -169,7 +177,11 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
         <button type="button" className={styles.exit} onClick={onExit} aria-label="Leave lesson (progress is saved)">
           <IconClose />
         </button>
-        <ProgressBar value={lesson.done.length} max={total} label={`${title}: ${lesson.done.length} of ${total} signs done`} />
+        <ProgressBar
+          value={completedQuestions}
+          max={total}
+          label={`${title}: ${completedQuestions} of ${total} questions complete`}
+        />
         <span className={styles.xp} title="XP earned in this lesson">
           <IconBolt /> {lesson.xp}
           <span className="visually-hidden"> XP earned in this lesson</span>
@@ -335,9 +347,9 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
           <FeedbackSheet
             tone="danger"
             title={reverse ? 'Not quite' : phase.skipped ? 'Skipped' : 'Time’s up'}
-            detail={reverse
-              ? `The answer is “${sign.label}”. We’ll come back to this sign at the end of the lesson.`
-              : `We’ll come back to “${sign.label}” at the end of the lesson.${missDetail(phase.result, sign.id)}`}
+            detail={phase.reverse
+              ? `The answer is “${sign.label}”. This word restarts with signing, then typing.`
+              : `This word’s progress resets. Sign “${sign.label}”, then type its English meaning.${missDetail(phase.result, sign.id)}`}
             onContinue={continueLesson}
           />
         ))}

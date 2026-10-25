@@ -80,7 +80,7 @@ def _session_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def current_user(session: str | None = Cookie(default=None, alias="signspark_session")) -> dict:
+def current_user(session: str | None = Cookie(default=None, alias="cosign_session")) -> dict:
     if not session:
         raise HTTPException(401, "Sign in to use accounts")
     profile = spacetime.option(_call("session_user", _session_hash(session)))
@@ -89,7 +89,7 @@ def current_user(session: str | None = Cookie(default=None, alias="signspark_ses
     return spacetime.record(profile, *PROFILE)
 
 
-def optional_user(session: str | None = Cookie(default=None, alias="signspark_session")) -> dict | None:
+def optional_user(session: str | None = Cookie(default=None, alias="cosign_session")) -> dict | None:
     if not session:
         return None
     try:
@@ -101,7 +101,7 @@ def optional_user(session: str | None = Cookie(default=None, alias="signspark_se
 def _set_cookie(response: Response) -> str:
     """Sets a new session cookie and returns the hash to store."""
     token = secrets.token_urlsafe(32)
-    response.set_cookie("signspark_session", token, httponly=True, secure=os.getenv("SIGNSPARK_COOKIE_SECURE") == "1", samesite="strict", max_age=30 * 86400, path="/")
+    response.set_cookie("cosign_session", token, httponly=True, secure=os.getenv("COSIGN_COOKIE_SECURE") == "1", samesite="strict", max_age=30 * 86400, path="/")
     return _session_hash(token)
 
 
@@ -125,10 +125,10 @@ def me(user: dict = Depends(current_user)):
 
 
 @router.post("/logout")
-def logout(response: Response, session: str | None = Cookie(default=None, alias="signspark_session")):
+def logout(response: Response, session: str | None = Cookie(default=None, alias="cosign_session")):
     if session:
         _call("end_session", _session_hash(session))
-    response.delete_cookie("signspark_session", path="/", httponly=True, samesite="strict")
+    response.delete_cookie("cosign_session", path="/", httponly=True, samesite="strict")
     return {"ok": True}
 
 
@@ -140,7 +140,7 @@ def privacy(body: PrivacySettings, user: dict = Depends(current_user)):
 @router.delete("")
 def delete_account(response: Response, user: dict = Depends(current_user)):
     _call("delete_user", user["id"])
-    response.delete_cookie("signspark_session", path="/", httponly=True, samesite="strict")
+    response.delete_cookie("cosign_session", path="/", httponly=True, samesite="strict")
     return {"ok": True}
 
 
