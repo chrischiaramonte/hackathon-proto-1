@@ -102,14 +102,24 @@ await scenario('completes the lesson with real recognition', async () => {
     let { context, page } = await launch('hello');
     await page.goto(APP);
     await page.getByRole('button', { name: /^Continue/ }).first().click();
-    const next = (await word(page)).toLowerCase().replace(/[^a-z]/g, '');
-    await context.close();
+    await page.getByRole('button', { name: /I’m ready|Getting camera ready|Connecting/ }).waitFor();
+    if ((await page.locator('h1').count()) === 0) {
+      // A translation prompt hides the word: type the meaning, as a learner would.
+      const label = (await page.locator('video').first().getAttribute('aria-label')).match(/“(.+)”/)[1];
+      await page.getByRole('button', { name: /I’m ready/ }).click();
+      await page.getByLabel('English meaning').fill(label);
+      await page.getByRole('button', { name: 'Check answer' }).click();
+      await page.getByText(PRAISE).waitFor();
+    } else {
+      const next = (await word(page)).toLowerCase().replace(/[^a-z]/g, '');
+      await context.close();
 
-    ({ context, page } = await launch(next));
-    await page.goto(APP);
-    await page.getByRole('button', { name: /^Continue/ }).first().click();
-    await page.waitForTimeout(2000); // let hand tracking load
-    await signCurrentWord(page, `03-${next}-accepted`);
+      ({ context, page } = await launch(next));
+      await page.goto(APP);
+      await page.getByRole('button', { name: /^Continue/ }).first().click();
+      await page.waitForTimeout(2000); // let hand tracking load
+      await signCurrentWord(page, `03-${next}-accepted`);
+    }
     await page.getByRole('button', { name: 'Continue' }).click();
     const complete = await page.getByText('Lesson complete!').isVisible().catch(() => false);
     if (complete) {

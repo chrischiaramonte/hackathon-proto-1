@@ -27,6 +27,7 @@ export interface RecognitionResult {
   framesReceived: number;
   framesUsed: number;
   handFrames: number;
+  xpAwarded?: number;
 }
 
 export class ApiError extends Error {
@@ -58,11 +59,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export function recognize(target: string, frames: LandmarkFrame[]): Promise<RecognitionResult> {
+export function recognize(target: string, frames: LandmarkFrame[], lessonId?: string): Promise<RecognitionResult> {
   return request<RecognitionResult>('/recognize', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ target, frames: frames.slice(-MAX_FRAMES) }),
+    body: JSON.stringify({ target, frames: frames.slice(-MAX_FRAMES), ...(lessonId ? { lessonId } : {}) }),
   });
 }
 

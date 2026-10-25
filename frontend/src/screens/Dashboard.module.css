@@ -90,6 +90,91 @@
   font-weight: 800;
 }
 
+.leaderboard {
+  padding: 1.25rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.leaderboardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.leaderboardKicker {
+  color: var(--brand);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.leaderboardHeader .sectionTitle {
+  margin: 0;
+}
+
+.leaderboardList {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leaderboardRow {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 48px;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.currentLearner {
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+}
+
+.leaderboardRank {
+  font-weight: 900;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboardName {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboardXp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.leaderboardEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 0 0.25rem;
+  color: var(--ink-2);
+  font-weight: 700;
+}
+
 .sectionTitle {
   margin-bottom: 0.75rem;
   font-size: 1.25rem;

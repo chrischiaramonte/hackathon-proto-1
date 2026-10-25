@@ -48,6 +48,11 @@ export function currentSign(state: LessonState): string | undefined {
   return state.queue[0];
 }
 
+/** Start with two signing prompts, then introduce a translation prompt every other sign. */
+export function isReversePrompt(state: LessonState): boolean {
+  return state.done.length >= 2 && state.done.length % 2 === 0;
+}
+
 export function isComplete(state: LessonState): boolean {
   return state.queue.length === 0;
 }

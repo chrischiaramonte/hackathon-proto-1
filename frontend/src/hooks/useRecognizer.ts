@@ -4,6 +4,7 @@ import { AttemptSegmenter, type Segment } from '../lib/segmenter';
 
 interface Options {
   target: string | undefined;
+  lessonId?: string;
   /** Frames are ignored unless enabled (e.g. outside the practice phase). */
   enabled: boolean;
   onAccepted: (result: RecognitionResult) => void;
@@ -26,13 +27,13 @@ export interface Recognizer {
  * One request is in flight at a time; a window that is not accepted is silent, so the user
  * is never told "wrong" while still mid-sign.
  */
-export function useRecognizer({ target, enabled, onAccepted }: Options): Recognizer {
+export function useRecognizer({ target, lessonId, enabled, onAccepted }: Options): Recognizer {
   const segmenter = useRef(new AttemptSegmenter());
   const generation = useRef(0);
   const inFlight = useRef(false);
   const queued = useRef<Segment | null>(null);
   const signingRef = useRef(false);
-  const latest = useRef({ target, enabled, onAccepted });
+  const latest = useRef({ target, lessonId, enabled, onAccepted });
 
   const [signing, setSigning] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -40,7 +41,7 @@ export function useRecognizer({ target, enabled, onAccepted }: Options): Recogni
   const [error, setError] = useState<ApiError | null>(null);
 
   useEffect(() => {
-    latest.current = { target, enabled, onAccepted };
+    latest.current = { target, lessonId, enabled, onAccepted };
   });
 
   // New sign or phase: start clean and ignore answers still in flight.
@@ -52,7 +53,7 @@ export function useRecognizer({ target, enabled, onAccepted }: Options): Recogni
     setSigning(false);
     setLastResult(null);
     setError(null);
-  }, [target, enabled]);
+  }, [target, lessonId, enabled]);
 
   const submit = useCallback((segment: Segment) => {
     const sign = latest.current.target;
@@ -65,7 +66,7 @@ export function useRecognizer({ target, enabled, onAccepted }: Options): Recogni
     inFlight.current = true;
     setChecking(true);
     const gen = generation.current;
-    recognize(sign, segment.frames)
+    recognize(sign, segment.frames, latest.current.lessonId)
       .then((result) => {
         if (gen !== generation.current) return;
         setError(null);

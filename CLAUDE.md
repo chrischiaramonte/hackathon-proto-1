@@ -33,10 +33,6 @@ Before implementing:
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-## 2.5 Special Request
-
-**When you send me response, respond in chinese**
-
 ## 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**

@@ -2,8 +2,8 @@
 
 A Duolingo-style web app for family and friends of Deaf people. Watch a Deaf
 signer demonstrate a sign, sign it back to your webcam, and a pretrained
-sign-recognition model decides whether it matched. Lessons, XP, retries and
-progress are saved in the browser.
+sign-recognition model decides whether it matched. Guest lesson progress is
+saved in the browser; optional accounts store leaderboard XP on the backend.
 
 Everything below was built to the scope in [DESIGN.md](DESIGN.md). Recognition
 is real: no predictions are faked, and every number in this README comes from a
@@ -78,6 +78,18 @@ unlocks after 3 learned signs and mixes up to 6 of them.
 learned signs and the in-progress lesson are kept in `localStorage`. Every
 answer is saved immediately, so a refresh or closed tab resumes on the same
 sign. Corrupt or outdated data falls back safely.
+
+**Accounts and leaderboard:** Use the dashboard's Leaderboard button to create
+an account or sign in. New accounts are private by default. Learners can opt
+into the global leaderboard or limit their visible rank to accepted friends;
+friend requests use exact display names. Password hashes (PBKDF2), opaque
+HTTP-only sessions, XP events and friend relationships are stored in
+`backend/data/signspark.sqlite3` (override with `SIGNSPARK_DB`). The server
+awards leaderboard XP only after an accepted recognition result or validated
+translation answer, with repeat awards of 10, 5, 2, then 0 XP per sign and
+lesson. Account deletion cascades through sessions, XP and friend links.
+Password recovery is not available yet. Production deployments must use HTTPS
+and set `SIGNSPARK_COOKIE_SECURE=1`.
 
 **When things go wrong:**
 
@@ -275,8 +287,12 @@ switching cameras.
   which. No camera picker yet; an unplugged camera recovers via Retry.
 - **Partial-sign windows:** the start of one sign can look like another (PLEASE
   opens like HUNGRY). The 0.9 s first-check delay and margin rule mitigate it.
-- **No dispute button, streaks, accounts or cross-device sync** (DESIGN.md
-  non-goals or later tests). *Reset progress* clears local data.
+- **No password recovery or federated login.** Lesson completion summaries and
+  personal lesson history remain device-local; account leaderboard XP is stored
+  separately. Recognition landmarks are supplied by the browser, so the server
+  validates predictions but cannot prevent replay of a recorded sign. *Reset
+  progress* clears local data; account deletion removes server-side data.
+- **No dispute button or streaks.**
 - No text descriptions of signs: we only show authentic demonstrations rather
   than writing unreviewed instructions. A Deaf reviewer sign-off is still
   needed before anything goes public (DESIGN.md §13.6).
