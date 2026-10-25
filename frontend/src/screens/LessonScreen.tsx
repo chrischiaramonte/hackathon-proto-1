@@ -334,14 +334,19 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
           )}
           {practicing && !reverse && (
             <>
-              <Button variant="secondary" onClick={() => finish('incorrect', lastResult.current, true)}>
-                Skip
-              </Button>
               {lesson.scored && recognizer.error && (
                 <Button variant="ghost" onClick={usePracticeMode}>
                   Practice without scoring
                 </Button>
               )}
+              <Button
+                variant="secondary"
+                size={lesson.scored ? 'lg' : 'md'}
+                onClick={() => finish('incorrect', lastResult.current, true)}
+                className={lesson.scored ? styles.primaryAction : undefined}
+              >
+                Skip
+              </Button>
               {!lesson.scored && (
                 <Button size="lg" onClick={() => finish('correct', null)} className={styles.primaryAction}>
                   I practiced it

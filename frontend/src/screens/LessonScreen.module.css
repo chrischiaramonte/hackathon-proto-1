@@ -241,7 +241,12 @@
 .footer {
   position: fixed;
   inset: auto 0 0;
-  padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  /* Matches the feedback sheet so the bar doesn’t jump between watch, sign, and result. */
+  min-height: calc(5.5rem + env(safe-area-inset-bottom));
+  padding: 0 1.5rem env(safe-area-inset-bottom);
   border-top: 2px solid var(--line);
   background: var(--surface);
 }
@@ -251,6 +256,7 @@
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+  width: 100%;
   max-width: 1040px;
   margin: 0 auto;
 }
@@ -282,6 +288,11 @@
 
   .practice {
     width: 100%;
+  }
+
+  .footer {
+    height: auto;
+    padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
   }
 
   .primaryAction {
