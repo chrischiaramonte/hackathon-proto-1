@@ -10,7 +10,7 @@ import { SignDemo } from '../components/SignDemo';
 import { signLabel, signs } from '../content';
 import { useRecognizer, type Recognizer } from '../hooks/useRecognizer';
 import { isServerReady, type RecognitionResult, type RecognitionStatus } from '../lib/api';
-import { answer, currentSign, isComplete, isReversePrompt, type LessonState, type Outcome } from '../lib/lessonEngine';
+import { answer, currentSign, isComplete, isReversePrompt, lessonProgress, type LessonState, type Outcome } from '../lib/lessonEngine';
 import { accountApi } from '../lib/accountApi';
 import { playCorrect, playWrong } from '../lib/sounds';
 import styles from './LessonScreen.module.css';
@@ -71,14 +71,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   const sign = signId ? signs[signId] : undefined;
   const practicing = phase.name === 'practice';
   const reverse = phase.name === 'feedback' ? phase.reverse : isReversePrompt(lesson);
-  const reviewPhase = lesson.reviewPhase === true;
-  const totalTerms = reviewPhase
-    ? lesson.done.length + lesson.queue.length
-    : (lesson.signedOnce?.length ?? 0) + lesson.queue.length;
-  const total = totalTerms * 2;
-  const completedQuestions = reviewPhase
-    ? lesson.done.length * 2 + lesson.queue.filter((term) => lesson.questionPhases?.[term] === 'translation').length
-    : (lesson.signedOnce?.length ?? 0);
+  const { done: completedQuestions, total } = lessonProgress(lesson);
 
   const checkServer = useCallback(() => {
     setServer('checking');

@@ -63,6 +63,16 @@ export function isReversePrompt(state: LessonState): boolean {
   return Boolean(sign && state.reviewPhase && (state.questionPhases?.[sign] ?? 'translation') === 'translation');
 }
 
+/** Questions answered so far out of the lesson's total: each word is signed once, then typed. */
+export function lessonProgress(state: LessonState): { done: number; total: number } {
+  const reviewPhase = state.reviewPhase === true;
+  const terms = reviewPhase ? state.done.length + state.queue.length : (state.signedOnce?.length ?? 0) + state.queue.length;
+  const done = reviewPhase
+    ? state.done.length * 2 + state.queue.filter((term) => state.questionPhases?.[term] === 'translation').length
+    : (state.signedOnce?.length ?? 0);
+  return { done, total: terms * 2 };
+}
+
 export function isComplete(state: LessonState): boolean {
   return state.queue.length === 0;
 }

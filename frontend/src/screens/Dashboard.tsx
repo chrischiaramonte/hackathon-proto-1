@@ -17,6 +17,7 @@ import { Logo } from "../components/Logo";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { ProgressBar } from "../components/ProgressBar";
 import { attribution, lessons, signLabel } from "../content";
+import { lessonProgress } from "../lib/lessonEngine";
 import type { Progress } from "../lib/progress";
 import styles from "./Dashboard.module.css";
 import {
@@ -280,13 +281,12 @@ export function Dashboard({
                   <h1 className={styles.heroTitle}>{activeTitle}</h1>
                   <div className={styles.heroProgress}>
                     <ProgressBar
-                      value={active.done.length}
-                      max={active.done.length + active.queue.length}
+                      value={lessonProgress(active).done}
+                      max={lessonProgress(active).total}
                       label="Lesson progress"
                     />
                     <span>
-                      {active.done.length}/
-                      {active.done.length + active.queue.length}
+                      {lessonProgress(active).done}/{lessonProgress(active).total}
                     </span>
                   </div>
                   <Button size="lg" onClick={onResume}>

@@ -21,6 +21,7 @@ const PRAISE = /Nice signing!|You got it!|Great job!|Excellent!/;
 mkdirSync(OUT, { recursive: true });
 
 let failures = 0;
+const openContexts = new Set();
 async function scenario(name, fn) {
   try {
     await fn();
@@ -28,6 +29,10 @@ async function scenario(name, fn) {
   } catch (error) {
     failures++;
     console.log(`FAIL  ${name}\n      ${String(error.message ?? error).split('\n')[0]}`);
+  } finally {
+    // A failed scenario must not leave Chrome holding the profile for the next one.
+    await Promise.all([...openContexts].map((context) => context.close().catch(() => {})));
+    openContexts.clear();
   }
 }
 
@@ -46,6 +51,8 @@ async function launch(cam, { denyCamera = false } = {}) {
     permissions: denyCamera ? [] : ['camera'],
     args,
   });
+  openContexts.add(context);
+  context.on('close', () => openContexts.delete(context));
   const page = context.pages()[0] ?? (await context.newPage());
   const results = [];
   page.on('response', async (response) => {
@@ -84,7 +91,7 @@ await scenario('recognises the sign on camera and awards XP', async () => {
   check(!results.some((r) => r?.target === 'please' && r.accepted), 'HELLO must not be accepted as PLEASE');
   check(await page.getByText('The model saw “Hello” instead.').isVisible(), 'the miss should say what the model saw');
   await page.getByRole('button', { name: 'Continue' }).click();
-  check((await word(page)) === 'Thank you', 'the missed sign should move to the end of the queue');
+  check((await word(page)) === 'Please', 'a missed sign stays current during the first pass');
   await context.close();
 });
 
@@ -92,12 +99,13 @@ await scenario('resumes the lesson after a reload', async () => {
   const { context, page } = await launch('hello');
   await page.goto(APP);
   await page.getByText('Pick up where you left off').waitFor();
-  check((await page.locator('section').first().innerText()).includes('1/6'), 'progress should show 1/6');
+  check((await page.locator('section').first().innerText()).includes('1/12'), 'progress should show 1 of 12 questions');
   await context.close();
 });
 
 await scenario('completes the lesson with real recognition', async () => {
-  for (let attempt = 0; attempt < 6; attempt++) {
+  // 6 words, each signed once and then typed: 12 questions (Please was already missed once).
+  for (let attempt = 0; attempt < 14; attempt++) {
     // Find out which sign is next, then relaunch with that sign on camera.
     let { context, page } = await launch('hello');
     await page.goto(APP);
@@ -124,7 +132,8 @@ await scenario('completes the lesson with real recognition', async () => {
     if (complete) {
       await shot(page, '04-lesson-complete');
       const text = await page.locator('main').innerText();
-      check(/XP EARNED\s*75/i.test(text), `expected 75 XP (5 first tries, 1 after a miss, bonus), got: ${text.replace(/\s+/g, ' ')}`);
+      // Signing 10+5+4×10 = 55, typing the same 55 (Please earns 5 after its miss), plus the 20 bonus.
+      check(/XP EARNED\s*130/i.test(text), `expected 130 XP, got: ${text.replace(/\s+/g, ' ')}`);
       await context.close();
       return;
     }

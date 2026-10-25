@@ -76,13 +76,16 @@ the backend neither stores nor logs them.
 
 **Lesson flow** (DESIGN.md §4): each question is _learn_ (looping demo by a
 real Deaf signer, with slow motion and a second signer) → _practice_ (live
-camera, 10 s in auto mode) → _feedback_. Accepted signs earn XP; a miss (time
-out or Skip) sends the sign to the back of the queue, and the lesson ends only
-when every sign has been signed correctly. Then you get a completion screen with
-XP, first-try accuracy and per-sign results.
+camera, 10 s) → _feedback_. First you sign every word once, in order; a miss
+(time out or Skip) keeps you on that word. Then each word comes back, in random
+order, as a typed question ("What does this sign mean?"); a miss there sends the
+word back to signing, then typing again. The lesson ends when every word has
+passed both. Then you get a completion screen with XP, first-try accuracy and
+per-sign results.
 
-**Game rules** (`frontend/src/lib/lessonEngine.ts`): +10 XP first try, +5 after
-a miss, +20 the first time a lesson is completed. Replaying a completed lesson
+**Game rules** (`frontend/src/lib/lessonEngine.ts`): every correct answer (each
+word is signed, then typed) earns +10 XP, or +5 once that word has been missed;
++20 the first time a lesson is completed. Replaying a completed lesson
 earns half and no bonus, so the easiest lesson can't be farmed. **Review**
 unlocks after 3 learned signs and mixes up to 6 of them.
 
@@ -244,7 +247,7 @@ PopSign videos by signers who do _not_ appear in the demo clips, through the
 real MediaPipe JS → API → model path.
 
 - 11 different signs across _First words_ and _Family_ were accepted, at p 0.41–0.98, 1–4 s after pressing "I'm ready".
-- Showing HELLO while the lesson asked for PLEASE: 14 of 14 windows were rejected (p = 0.00), then "Time's up" and requeue.
+- Showing HELLO while the lesson asked for PLEASE: 14 of 14 windows were rejected (p = 0.00), then "Time's up" and a miss.
 - The margin rule held back MOM vs GRANDMA (0.22 vs 0.20) until a clear MOM (0.41 vs 0.15).
 
 **What a probability is not:** the model ranks 250 signs. It cannot grade
@@ -286,9 +289,9 @@ including NaN coordinates, gets a 422 that never echoes landmark data back.
 | Command                                             | What it covers                                                                                                                                                                                                                                                                                                                                              | Result        |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | `cd backend && uv run pytest`                       | Layout; model output; **real PopSign fixtures predicted and accepted**, also mirrored; wrong signs rejected; gates; trimming; margin rule; API contract and validation; lesson content only uses model labels and has clips on disk; accounts, XP ladder, friends, leaderboard privacy and deletion against a live SpacetimeDB (skipped if none is running) | 48 passed     |
-| `cd frontend && npm test`                           | Lesson queue, requeue and XP rules; persistence, corruption and storage failures; segmenter timing; API client errors and timeouts; landmark conversion; framing and lighting hints; content integrity                                                                                                                                                      | 39 passed     |
+| `cd frontend && npm test`                           | Lesson flow (sign then type, misses, review), progress and XP rules; persistence, corruption and storage failures; segmenter timing; API client errors and timeouts; landmark conversion; framing and lighting hints; content integrity                                                                                                                                                      | 42 passed     |
 | `cd frontend && npm run typecheck && npm run build` | Strict TypeScript, production build                                                                                                                                                                                                                                                                                                                         | OK            |
-| `cd frontend && npm run e2e`                        | Real browser, real MediaPipe, real model: accept, reject and requeue, resume after reload, full lesson completion with 75 XP, camera denied, server down                                                                                                                                                                                                    | 5 of 5 passed |
+| `cd frontend && npm run e2e`                        | Real browser, real MediaPipe, real model: accept, reject and retry, resume after reload, full lesson (6 words signed and typed) with 130 XP, camera denied, server down                                                                                                                                                                                                    | 5 of 5 passed |
 
 The end-to-end test and the evaluation scripts need the optional data tooling:
 
@@ -312,7 +315,7 @@ Before the demo, have each teammate run this in Chrome:
 
 1. Start both servers. Open the app, allow the camera, and start **First words**. The live view should show white hand skeletons on your hands.
 2. **Hello:** watch the demo, press _I'm ready_, sign HELLO. Expect "Nice signing!" within ~1–3 s and +10 XP.
-3. **Negative:** on _Please_, sign HELLO or wave randomly for 20 s. It must not pass. After "Time's up", Please moves to the end.
+3. **Negative:** on _Please_, sign HELLO or wave randomly for 10 s. It must not pass. After "Time's up", Please comes up again.
 4. Hold one hand still in view: "Show the whole movement". Drop your hands: no scoring. Step out of frame or cover your face: framing hints.
 5. Dim the lights or sit with a window behind you: lighting hint.
 6. Sign with your **other** hand: it should still be accepted.

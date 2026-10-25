@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answer, startLesson, summarize } from './lessonEngine';
+import { answer, isComplete, startLesson, summarize } from './lessonEngine';
 import { clearProgress, EMPTY_PROGRESS, loadProgress, recordCompletion, saveProgress, STORAGE_KEY } from './progress';
 
 function memoryStorage(initial: Record<string, string> = {}) {
@@ -17,7 +17,8 @@ const lesson = { id: 'basics', signs: ['hello', 'yes'] };
 function completedSummary(opts: { scored?: boolean; replay?: boolean; missFirst?: boolean } = {}) {
   let state = startLesson(lesson, { replay: opts.replay ?? false, scored: opts.scored ?? true, now: 0 });
   if (opts.missFirst) state = answer(state, 'incorrect');
-  state = answer(answer(state, 'correct'), 'correct');
+  // Each word is signed once, then typed in review; answer everything correctly to the end.
+  while (!isComplete(state)) state = answer(state, 'correct');
   return summarize(state, 10_000);
 }
 
