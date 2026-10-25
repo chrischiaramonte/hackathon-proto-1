@@ -8,6 +8,13 @@
   color: var(--ink);
 }
 
+/* Sized in em so the mark stays in proportion with the wordmark wherever the logo is used. */
+.mark {
+  flex: none;
+  width: 1.45em;
+  height: 1.45em;
+}
+
 .wordmark {
   display: inline;
 }
