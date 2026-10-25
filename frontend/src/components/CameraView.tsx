@@ -13,7 +13,6 @@ const HAND_CONNECTIONS: [number, number][] = [
   [0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [5, 9], [9, 10], [10, 11], [11, 12],
   [9, 13], [13, 14], [14, 15], [15, 16], [13, 17], [0, 17], [17, 18], [18, 19], [19, 20],
 ];
-const ARM_CONNECTIONS: [number, number][] = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16]];
 /** A hint must persist this long before it is shown, so it doesn't flicker. */
 const HINT_DELAY_MS = 1200;
 
@@ -25,6 +24,10 @@ interface Props {
   onUseWithoutCamera: () => void;
   /** Camera live and hand tracking loaded: attempts can be checked. */
   onReadyChange: (ready: boolean) => void;
+  /** The camera is blocked or missing (the panel explains and offers recovery). */
+  onBlockedChange?: (blocked: boolean) => void;
+  /** The sign was just recognised: the frame glows green. */
+  success?: boolean;
   children?: ReactNode;
 }
 
@@ -51,15 +54,19 @@ function drawConnections(
   ctx.stroke();
 }
 
-function drawOverlay(canvas: HTMLCanvasElement, results: Results) {
+/** Recognised: the tracked hands turn green, glowing, to match the frame. */
+const SUCCESS_GREEN = '#2fd38a';
+
+function drawOverlay(canvas: HTMLCanvasElement, results: Results, success: boolean) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const scale = canvas.width / 640;
-  drawConnections(ctx, results.poseLandmarks, ARM_CONNECTIONS, 'rgba(255,255,255,0.55)', 3 * scale);
+  ctx.shadowColor = success ? SUCCESS_GREEN : 'transparent';
+  ctx.shadowBlur = success ? 14 * scale : 0;
   for (const hand of [results.leftHandLandmarks, results.rightHandLandmarks]) {
-    drawConnections(ctx, hand, HAND_CONNECTIONS, 'rgba(255,255,255,0.9)', 3 * scale);
-    ctx.fillStyle = '#7d6dff';
+    drawConnections(ctx, hand, HAND_CONNECTIONS, success ? SUCCESS_GREEN : 'rgba(255,255,255,0.9)', (success ? 4.5 : 3) * scale);
+    ctx.fillStyle = success ? '#ffffff' : '#7d6dff';
     for (const p of hand ?? []) {
       ctx.beginPath();
       ctx.arc(p.x * canvas.width, p.y * canvas.height, 3.5 * scale, 0, Math.PI * 2);
@@ -73,20 +80,30 @@ function drawOverlay(canvas: HTMLCanvasElement, results: Results) {
  * sees the raw (unmirrored) frames, matching the model's training data.
  * Video stays in the browser; only landmark coordinates leave this component.
  */
-export function CameraView({ active, onFrame, onUseWithoutCamera, onReadyChange, children }: Props) {
+export function CameraView({
+  active,
+  onFrame,
+  onUseWithoutCamera,
+  onReadyChange,
+  onBlockedChange,
+  success = false,
+  children,
+}: Props) {
   const { camera, retry } = useCamera();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const latest = useRef({ active, onFrame });
+  const latest = useRef({ active, onFrame, success });
   const [tracker, setTracker] = useState<'loading' | 'ready' | 'error'>('loading');
   const [hint, setHint] = useState<FramingHint | null>(null);
 
   useEffect(() => {
-    latest.current = { active, onFrame };
+    latest.current = { active, onFrame, success };
   });
 
   const ready = camera.status === 'live' && tracker === 'ready';
   useEffect(() => onReadyChange(ready), [ready, onReadyChange]);
+  const blocked = camera.status === 'error';
+  useEffect(() => onBlockedChange?.(blocked), [blocked, onBlockedChange]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -112,7 +129,7 @@ export function CameraView({ active, onFrame, onUseWithoutCamera, onReadyChange,
       if (canvas) {
         if (canvas.width !== video.videoWidth) canvas.width = video.videoWidth;
         if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
-        drawOverlay(canvas, results);
+        drawOverlay(canvas, results, latest.current.success);
       }
       if (now - lightingCheckedAt > 1000) {
         lightingCheckedAt = now;
@@ -169,7 +186,7 @@ export function CameraView({ active, onFrame, onUseWithoutCamera, onReadyChange,
         <IconCamera className={styles.placeholderIcon} />
         <p className={styles.placeholderText}>{CAMERA_ERROR_TEXT[camera.error]}</p>
         <p className={styles.placeholderSub}>
-          Without a camera you can still watch every sign and practise along, but attempts can’t be checked and no XP is
+          Without a camera you can still watch every sign and practice along, but attempts can’t be checked and no XP is
           earned.
         </p>
         <div className={styles.placeholderActions}>
@@ -177,7 +194,7 @@ export function CameraView({ active, onFrame, onUseWithoutCamera, onReadyChange,
             <IconRefresh /> Try again
           </Button>
           <Button variant="secondary" onClick={onUseWithoutCamera}>
-            Practise without camera
+            Practice without camera
           </Button>
         </div>
       </div>
@@ -185,7 +202,7 @@ export function CameraView({ active, onFrame, onUseWithoutCamera, onReadyChange,
   }
 
   return (
-    <div className={styles.camera}>
+    <div className={styles.camera} data-success={success || undefined}>
       <video ref={videoRef} className={styles.video} muted playsInline aria-label="Your camera" />
       <canvas ref={canvasRef} className={styles.overlay} aria-hidden="true" />
       {(camera.status === 'starting' || tracker === 'loading') && (

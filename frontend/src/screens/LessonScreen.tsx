@@ -8,15 +8,14 @@ import { ModelGuesses } from '../components/ModelGuesses';
 import { ProgressBar } from '../components/ProgressBar';
 import { SignDemo } from '../components/SignDemo';
 import { signLabel, signs } from '../content';
-import { useRecognizer, type CaptureMode, type Recognizer } from '../hooks/useRecognizer';
+import { useRecognizer, type Recognizer } from '../hooks/useRecognizer';
 import { isServerReady, type RecognitionResult, type RecognitionStatus } from '../lib/api';
 import { answer, currentSign, isComplete, type LessonState, type Outcome } from '../lib/lessonEngine';
+import { playCorrect, playWrong } from '../lib/sounds';
 import styles from './LessonScreen.module.css';
 
-/** Auto mode: how long the learner has to sign before it counts as a miss. */
+/** How long the learner has to sign before it counts as a miss. */
 const PRACTICE_MS = 20_000;
-/** Manual mode: scored tries before it counts as a miss. */
-const MANUAL_TRIES = 3;
 
 type Phase =
   | { name: 'learn' }
@@ -39,13 +38,12 @@ function missDetail(result: RecognitionResult | null, target: string): string {
   return top && top.sign !== target ? ` The model saw “${signLabel(top.sign)}” instead.` : '';
 }
 
-function practiceStatus(r: Recognizer, mode: CaptureMode, label: string): { text: string; tone: string } {
+function practiceStatus(r: Recognizer, label: string): { text: string; tone: string } {
   if (r.error) return { text: 'Can’t reach the recognition server. Is the backend running?', tone: 'error' };
-  if (r.recording) return { text: 'Recording… sign now, then press Stop', tone: 'live' };
-  if (r.checking && (mode === 'manual' || !r.signing)) return { text: 'Checking…', tone: 'live' };
+  if (r.checking && !r.signing) return { text: 'Checking…', tone: 'live' };
   if (r.signing) return { text: 'Watching…', tone: 'live' };
   if (r.lastResult && r.lastResult.status !== 'accepted') return { text: RESULT_TEXT[r.lastResult.status], tone: 'warn' };
-  return { text: mode === 'auto' ? `Raise your hands and sign “${label}”` : 'Press Record, then sign', tone: 'idle' };
+  return { text: `Raise your hands and sign “${label}”`, tone: 'idle' };
 }
 
 interface Props {
@@ -58,17 +56,18 @@ interface Props {
 
 export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>({ name: 'learn' });
-  const [mode, setMode] = useState<CaptureMode>('auto');
   const [server, setServer] = useState<'checking' | 'ok' | 'down'>('checking');
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraBlocked, setCameraBlocked] = useState(false);
   const readyRef = useRef<HTMLButtonElement>(null);
+  const wordRef = useRef<HTMLHeadingElement>(null);
   // Set synchronously, so an answer arriving just as Skip is pressed can't count twice.
   const answered = useRef(false);
 
   const signId = phase.name === 'feedback' ? phase.sign : currentSign(lesson);
   const sign = signId ? signs[signId] : undefined;
   const total = lesson.done.length + lesson.queue.length;
-  const practising = phase.name === 'practice';
+  const practicing = phase.name === 'practice';
 
   const checkServer = useCallback(() => {
     setServer('checking');
@@ -85,6 +84,12 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
     if (phase.name === 'learn' && canStart) readyRef.current?.focus();
   }, [phase.name, signId, canStart]);
 
+  // "I'm ready" disappears when practice starts; move focus to the word instead of
+  // dropping it on the page, so keyboard and screen reader users stay in place.
+  useEffect(() => {
+    if (phase.name === 'practice') wordRef.current?.focus();
+  }, [phase.name]);
+
   // Record the outcome right away, so a refresh can never lose it.
   const finish = useCallback(
     (outcome: Outcome, result: RecognitionResult | null, skipped = false) => {
@@ -94,16 +99,17 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
       const next = answer(lesson, outcome);
       onChange(next);
       setPhase({ name: 'feedback', sign: current, outcome, xp: next.xp - lesson.xp, result, skipped });
+      // Only answers the model actually judged get a sound; skips and unscored practice stay quiet.
+      if (lesson.scored && !skipped) (outcome === 'correct' ? playCorrect : playWrong)();
     },
     [lesson, onChange],
   );
 
   const recognizer = useRecognizer({
     target: currentSign(lesson),
-    enabled: practising && lesson.scored,
-    mode,
+    enabled: practicing && lesson.scored,
     onAccepted: (result) => {
-      if (practising) finish('correct', result);
+      if (practicing) finish('correct', result);
     },
   });
 
@@ -112,22 +118,24 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
     lastResult.current = recognizer.lastResult;
   });
 
-  // Auto mode: running out of time counts as a miss.
+  // The model judged an attempt and it wasn't the sign: sound it right away, not only at time's up.
+  // Attempts it couldn't judge (no hands, no face, no movement) stay quiet; the hint says what to fix.
+  const lastStatus = recognizer.lastResult?.status;
   useEffect(() => {
-    if (phase.name !== 'practice' || mode !== 'auto' || !lesson.scored) return;
+    if (lastStatus === 'rejected' || lastStatus === 'close') playWrong();
+  }, [recognizer.lastResult, lastStatus]);
+
+  // Running out of time counts as a miss.
+  useEffect(() => {
+    if (phase.name !== 'practice' || !lesson.scored) return;
     const id = setTimeout(() => finish('incorrect', lastResult.current), phase.startedAt + PRACTICE_MS - Date.now());
     return () => clearTimeout(id);
-  }, [phase, mode, lesson.scored, finish]);
-
-  // Manual mode: a limited number of scored tries.
-  useEffect(() => {
-    if (practising && mode === 'manual' && recognizer.misses >= MANUAL_TRIES) finish('incorrect', lastResult.current);
-  }, [practising, mode, recognizer.misses, finish]);
+  }, [phase, lesson.scored, finish]);
 
   // Losing the camera mid-attempt is not the learner's fault: back to watching, no miss.
   useEffect(() => {
-    if (practising && lesson.scored && !cameraReady) setPhase({ name: 'learn' });
-  }, [practising, lesson.scored, cameraReady]);
+    if (practicing && lesson.scored && !cameraReady) setPhase({ name: 'learn' });
+  }, [practicing, lesson.scored, cameraReady]);
 
   const startPractice = () => {
     answered.current = false;
@@ -141,7 +149,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   };
 
   if (!sign) return null;
-  const status = practiceStatus(recognizer, mode, sign.label);
+  const status = practiceStatus(recognizer, sign.label);
   const missedBefore = (lesson.misses[sign.id] ?? 0) > 0;
 
   return (
@@ -153,37 +161,40 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
         <ProgressBar value={lesson.done.length} max={total} label={`${title}: ${lesson.done.length} of ${total} signs done`} />
         <span className={styles.xp} title="XP earned in this lesson">
           <IconBolt /> {lesson.xp}
+          <span className="visually-hidden"> XP earned in this lesson</span>
         </span>
       </header>
 
-      {!lesson.scored && (
-        <div className={`${styles.banner} ${styles.info}`}>
-          <span>Practice mode: recognition is off, so attempts aren’t checked and no XP is earned.</span>
-          <Button variant="secondary" onClick={() => onChange({ ...lesson, scored: true })}>
-            Try recognition again
-          </Button>
-        </div>
-      )}
-      {lesson.scored && server === 'down' && (
-        <div className={`${styles.banner} ${styles.warning}`} role="alert">
-          <span>Can’t reach the recognition server, so signs can’t be checked right now.</span>
-          <span className={styles.bannerActions}>
-            <Button variant="secondary" onClick={checkServer}>
-              Retry
-            </Button>
-            <Button variant="ghost" onClick={usePracticeMode}>
-              Practise without scoring
-            </Button>
-          </span>
-        </div>
-      )}
-
       <main className={styles.stage}>
+        {!lesson.scored && (
+          <div className={`${styles.banner} ${styles.info}`} role="status">
+            <span>Practice mode: recognition is off, so attempts aren’t checked and no XP is earned.</span>
+            <Button variant="secondary" onClick={() => onChange({ ...lesson, scored: true })}>
+              Try recognition again
+            </Button>
+          </div>
+        )}
+        {lesson.scored && server === 'down' && (
+          <div className={`${styles.banner} ${styles.warning}`} role="alert">
+            <span>Can’t reach the recognition server, so signs can’t be checked right now.</span>
+            <span className={styles.bannerActions}>
+              <Button variant="secondary" onClick={checkServer}>
+                Retry
+              </Button>
+              <Button variant="ghost" onClick={usePracticeMode}>
+                Practice without scoring
+              </Button>
+            </span>
+          </div>
+        )}
+
         <div className={styles.prompt}>
-          <p className={styles.eyebrow}>
+          <p id="lesson-step" className={styles.eyebrow}>
             {phase.name === 'learn' ? (missedBefore ? 'Let’s try this one again' : 'Watch the sign') : 'Your turn: sign'}
           </p>
-          <h1 className={styles.word}>{sign.label}</h1>
+          <h1 ref={wordRef} className={styles.word} tabIndex={-1} aria-describedby="lesson-step">
+            {sign.label}
+          </h1>
         </div>
 
         <div className={styles.panels}>
@@ -192,10 +203,12 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
           <div className={styles.practice}>
             {lesson.scored ? (
               <CameraView
-                active={practising}
+                active={practicing}
                 onFrame={recognizer.pushFrame}
                 onUseWithoutCamera={usePracticeMode}
                 onReadyChange={setCameraReady}
+                onBlockedChange={setCameraBlocked}
+                success={phase.name === 'feedback' && phase.outcome === 'correct'}
               >
                 {phase.name === 'learn' && (
                   <div className={styles.cameraVeil}>
@@ -203,7 +216,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
                     <p>Watch the demo, then press “I’m ready” and sign it here.</p>
                   </div>
                 )}
-                {practising && (
+                {practicing && (
                   <p className={`${styles.status} ${styles[status.tone]}`} aria-live="polite">
                     {status.text}
                   </p>
@@ -212,19 +225,14 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
             ) : (
               <div className={styles.selfPractice}>
                 <IconHand className={styles.veilIcon} />
-                <p>Sign along with the demonstration. When you’ve practised it a few times, continue.</p>
+                <p>Sign along with the demonstration. When you’ve practiced it a few times, continue.</p>
               </div>
             )}
 
-            {practising && lesson.scored && mode === 'auto' && (
+            {practicing && lesson.scored && (
               <Countdown key={phase.startedAt} startedAt={phase.startedAt} durationMs={PRACTICE_MS} />
             )}
-            {practising && lesson.scored && mode === 'manual' && (
-              <p className={styles.tries}>
-                Try {Math.min(recognizer.misses + 1, MANUAL_TRIES)} of {MANUAL_TRIES}
-              </p>
-            )}
-            {practising && recognizer.lastResult && (
+            {practicing && recognizer.lastResult && (
               <ModelGuesses predictions={recognizer.lastResult.topPredictions} target={sign.id} />
             )}
           </div>
@@ -249,46 +257,24 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
                     ? 'Server unavailable'
                     : cameraReady
                       ? 'I’m ready'
-                      : 'Getting camera ready…'}
+                      : cameraBlocked
+                        ? 'Camera unavailable'
+                        : 'Getting camera ready…'}
             </Button>
           )}
-          {practising && (
+          {practicing && (
             <>
               <Button variant="secondary" onClick={() => finish('incorrect', lastResult.current, true)}>
                 Skip
               </Button>
-              {lesson.scored && (
-                <label className={styles.modeToggle}>
-                  <input
-                    type="checkbox"
-                    checked={mode === 'manual'}
-                    onChange={(e) => {
-                      setMode(e.target.checked ? 'manual' : 'auto');
-                      setPhase({ name: 'practice', startedAt: Date.now() });
-                    }}
-                  />
-                  Manual capture
-                </label>
-              )}
               {lesson.scored && recognizer.error && (
                 <Button variant="ghost" onClick={usePracticeMode}>
-                  Practise without scoring
-                </Button>
-              )}
-              {lesson.scored && mode === 'manual' && (
-                <Button
-                  size="lg"
-                  variant={recognizer.recording ? 'danger' : 'primary'}
-                  onClick={recognizer.recording ? recognizer.stopRecording : recognizer.startRecording}
-                  disabled={recognizer.checking}
-                  className={styles.primaryAction}
-                >
-                  {recognizer.recording ? 'Stop' : 'Record'}
+                  Practice without scoring
                 </Button>
               )}
               {!lesson.scored && (
                 <Button size="lg" onClick={() => finish('correct', null)} className={styles.primaryAction}>
-                  I practised it
+                  I practiced it
                 </Button>
               )}
             </>
@@ -300,7 +286,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
         (phase.outcome === 'correct' ? (
           <FeedbackSheet
             tone="success"
-            title={lesson.scored ? PRAISE[lesson.done.length % PRAISE.length]! : 'Practised'}
+            title={lesson.scored ? PRAISE[lesson.done.length % PRAISE.length]! : 'Practiced'}
             detail={
               phase.result?.targetProbability != null
                 ? `“${sign.label}”: the model is ${Math.round(phase.result.targetProbability * 100)}% sure`
@@ -312,7 +298,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
         ) : (
           <FeedbackSheet
             tone="danger"
-            title={phase.skipped ? 'Skipped' : mode === 'manual' ? 'Not this time' : 'Time’s up'}
+            title={phase.skipped ? 'Skipped' : 'Time’s up'}
             detail={`We’ll come back to “${sign.label}” at the end of the lesson.${missDetail(phase.result, sign.id)}`}
             onContinue={continueLesson}
           />

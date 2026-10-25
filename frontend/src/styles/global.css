@@ -5,21 +5,27 @@
   --surface-2: #eef0f7;
   --ink: #1c2140;
   --ink-2: #4a5073;
-  --muted: #7d83a3;
+  --muted: #5f6585;
   --line: #e1e4ef;
 
   --brand: #5a48f0;
   --brand-dark: #3f2fc4;
   --brand-soft: #ebe8ff;
+  /* Brand colour for text and focus rings; --brand is the fill behind white text. */
+  --brand-text: #5a48f0;
   --success: #1fae6b;
-  --success-dark: #158552;
+  --success-dark: #0f6e42;
+  /* Bright --success is for rings and bars; text and white-on-green use these. */
+  --success-fill: #13834f;
+  --success-text: #117346;
   --success-soft: #e1f6ec;
   --danger: #ef4f57;
-  --danger-dark: #c43941;
+  --danger-dark: #b8323a;
   --danger-soft: #fde7e8;
   --warning: #f2a01d;
   --warning-soft: #fff3dc;
   --xp: #ffb400;
+  --xp-text: #8a6100;
 
   --radius-sm: 10px;
   --radius: 16px;
@@ -27,26 +33,29 @@
   --shadow: 0 1px 2px rgb(28 33 64 / 6%), 0 8px 24px rgb(28 33 64 / 8%);
   --font: 'Nunito Variable', ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #12142a;
-    --surface: #1b1e3a;
-    --surface-2: #252950;
-    --ink: #f1f2fb;
-    --ink-2: #c3c6e2;
-    --muted: #8d92b8;
-    --line: #2f3460;
-    --brand: #7d6dff;
-    --brand-dark: #5546d6;
-    --brand-soft: #2b2a5e;
-    --success-soft: #133c2c;
-    --danger-soft: #45202a;
-    --warning-soft: #44361a;
-    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
-  }
+/* Set on <html> by index.html and src/lib/theme.ts (system setting until the learner picks). */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #12142a;
+  --surface: #1b1e3a;
+  --surface-2: #252950;
+  --ink: #f1f2fb;
+  --ink-2: #c3c6e2;
+  --muted: #a3a8cc;
+  --line: #2f3460;
+  --brand: #6252f0;
+  --brand-dark: #4a3bc9;
+  --brand-soft: #2b2a5e;
+  --brand-text: #a99fff;
+  --success-text: #6ee3a8;
+  --xp-text: #ffc94d;
+  --success-soft: #133c2c;
+  --danger-soft: #45202a;
+  --warning-soft: #44361a;
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
 }
 
 *,
@@ -84,11 +93,11 @@ button {
 }
 
 a {
-  color: var(--brand);
+  color: var(--brand-text);
 }
 
 :focus-visible {
-  outline: 3px solid var(--brand);
+  outline: 3px solid var(--brand-text);
   outline-offset: 2px;
 }
 

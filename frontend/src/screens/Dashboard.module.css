@@ -15,6 +15,7 @@
 
 .stats {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
@@ -143,7 +144,7 @@
 }
 
 .done .node {
-  background: var(--success);
+  background: var(--success-fill);
   box-shadow: 0 4px 0 var(--success-dark);
 }
 

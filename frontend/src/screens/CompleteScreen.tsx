@@ -3,6 +3,7 @@ import { Button } from '../components/Button';
 import { IconBolt, IconCheck, IconStar } from '../components/Icons';
 import { signLabel } from '../content';
 import type { LessonSummary } from '../lib/lessonEngine';
+import { playComplete } from '../lib/sounds';
 import styles from './CompleteScreen.module.css';
 
 const CONFETTI_COLORS = ['#5a48f0', '#1fae6b', '#ffb400', '#ef4f57', '#38bdf8'];
@@ -22,6 +23,14 @@ interface Props {
 export function CompleteScreen({ summary, title, onDone, onReplay }: Props) {
   const doneRef = useRef<HTMLButtonElement>(null);
   useEffect(() => doneRef.current?.focus(), []);
+
+  // Celebrate scored lessons once (the ref stops React's dev double-run from playing it twice).
+  const played = useRef(false);
+  useEffect(() => {
+    if (!summary.scored || played.current) return;
+    played.current = true;
+    playComplete();
+  }, [summary.scored]);
 
   return (
     <div className={styles.page}>
@@ -85,7 +94,7 @@ export function CompleteScreen({ summary, title, onDone, onReplay }: Props) {
 
         <div className={styles.actions}>
           <Button variant="secondary" size="lg" onClick={onReplay}>
-            Practise again
+            Practice again
           </Button>
           <Button ref={doneRef} variant="success" size="lg" onClick={onDone}>
             Continue

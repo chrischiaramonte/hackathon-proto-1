@@ -130,12 +130,12 @@ await scenario('without camera access, explains and offers unscored practice', a
   await page.goto(APP);
   await page.getByRole('button', { name: /Start learning/ }).click();
   await page.getByText(/Camera access was blocked/).waitFor({ timeout: 15_000 });
-  check(await page.getByRole('button', { name: /Getting camera ready/ }).isDisabled(), 'scored practice must not start without a camera');
+  check(await page.getByRole('button', { name: /Camera unavailable/ }).isDisabled(), 'scored practice must not start without a camera');
   await shot(page, '05-camera-denied');
   await page.getByRole('button', { name: /without camera/ }).click();
   await page.getByText(/Practice mode/).waitFor();
   await page.getByRole('button', { name: /I’m ready/ }).click();
-  await page.getByRole('button', { name: /I practised it/ }).click();
+  await page.getByRole('button', { name: /I practiced it/ }).click();
   check((await page.getByText('+').count()) === 0, 'practice answers must not earn XP');
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Try recognition again' }).click();
@@ -155,29 +155,6 @@ await scenario('with the server unreachable, blocks scoring and recovers', async
   await page.unroute('**/api/**');
   await page.getByRole('button', { name: 'Retry' }).click();
   await page.getByRole('button', { name: /I’m ready|Getting camera ready/ }).waitFor();
-  await context.close();
-});
-
-await scenario('manual capture records, stops and scores', async () => {
-  rmSync(PROFILE, { recursive: true, force: true });
-  const { context, page } = await launch('please');
-  await page.goto(APP);
-  await page.getByRole('button', { name: /Start learning/ }).click();
-  await page.getByRole('button', { name: /I’m ready/ }).click();
-  await page.getByRole('button', { name: 'Skip' }).click(); // Hello goes to the back
-  await page.getByRole('button', { name: 'Continue' }).click();
-  check((await word(page)) === 'Please', 'Please should be next');
-  await page.getByRole('button', { name: /I’m ready/ }).click();
-  await page.getByLabel('Manual capture').check();
-  // Like a learner: up to the three tries manual mode allows.
-  for (let tries = 0; tries < 3 && !(await page.getByText(PRAISE).isVisible()); tries++) {
-    await page.getByRole('button', { name: 'Record' }).click();
-    await page.waitForTimeout(3000);
-    await page.getByRole('button', { name: 'Stop' }).click();
-    await page.getByText(PRAISE).or(page.getByRole('button', { name: 'Record' })).first().waitFor({ timeout: 15_000 });
-  }
-  await page.getByText(PRAISE).waitFor({ timeout: 5_000 });
-  await shot(page, '07-manual-accepted');
   await context.close();
 });
 

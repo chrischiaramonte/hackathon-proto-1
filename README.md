@@ -53,7 +53,7 @@ included, is served locally.
                  │ 468 face + 2×21 hand + 33 pose        2. assemble (T, 543, 3), NaN = missing
                  ▼   landmarks per frame                 3. drop empty frames, trim idle ends
  AttemptSegmenter ── attempt windows (JSON) ──────────►  4. quality gates: hands / face / motion
- (auto) or Record/Stop (manual)                          5. TFLite model ─► 250 logits ─► softmax
+                                                         5. TFLite model ─► 250 logits ─► softmax
                  ▲                                       6. accept if target is top-1, p ≥ 0.4,
  lesson UI ◄──── status, probability, top-5 ◄─────────      and leads the runner-up by ≥ 0.1
  queue, XP, localStorage
@@ -83,11 +83,10 @@ sign. Corrupt or outdated data falls back safely.
 
 | Situation | Behaviour |
 | --- | --- |
-| Camera blocked / missing / in use / unplugged | Specific explanation and Retry. "Practise without camera" runs the lesson unscored (no XP, no completion). Scored practice can't start without a working camera, and an unplugged camera returns to the demo without a miss. |
-| Backend unreachable | Banner, Retry and "Practise without scoring"; the start button is disabled while it's down. Progress is never lost. |
+| Camera blocked / missing / in use / unplugged | Specific explanation and Retry. "Practice without camera" runs the lesson unscored (no XP, no completion). Scored practice can't start without a working camera, and an unplugged camera returns to the demo without a miss. |
+| Backend unreachable | Banner, Retry and "Practice without scoring"; the start button is disabled while it's down. Progress is never lost. |
 | No hands, face out of view, hand held still | Not scored. The learner is told what to fix (`no_hands`, `no_face`, `no_motion`). |
 | Dark room, bright window behind you, too close or far, hands leaving the frame | Live coaching hints over the camera. |
-| Auto recognition misbehaves | Tick **Manual capture**: Record → sign → Stop, 3 tries. |
 | Near-tie between similar signs | Not accepted until the model clearly prefers the target. |
 
 ## Repository layout
@@ -223,7 +222,7 @@ including NaN coordinates, gets a 422 that never echoes landmark data back.
 | `cd backend && uv run pytest` | Layout; model output; **real PopSign fixtures predicted and accepted**, also mirrored; wrong signs rejected; gates; trimming; margin rule; API contract and validation; lesson content only uses model labels and has clips on disk | 44 passed |
 | `cd frontend && npm test` | Lesson queue, requeue and XP rules; persistence, corruption and storage failures; segmenter timing; API client errors and timeouts; landmark conversion; framing and lighting hints; content integrity | 39 passed |
 | `cd frontend && npm run typecheck && npm run build` | Strict TypeScript, production build | OK |
-| `cd frontend && npm run e2e` | Real browser, real MediaPipe, real model: accept, reject and requeue, resume after reload, full lesson completion with 75 XP, camera denied, server down, manual capture | 6 of 6 passed |
+| `cd frontend && npm run e2e` | Real browser, real MediaPipe, real model: accept, reject and requeue, resume after reload, full lesson completion with 75 XP, camera denied, server down | 5 of 5 passed |
 
 The end-to-end test and the evaluation scripts need the optional data tooling:
 
@@ -251,12 +250,11 @@ Before the demo, have each teammate run this in Chrome:
 4. Hold one hand still in view: "Show the whole movement". Drop your hands: no scoring. Step out of frame or cover your face: framing hints.
 5. Dim the lights or sit with a window behind you: lighting hint.
 6. Sign with your **other** hand: it should still be accepted.
-7. Tick **Manual capture**: Record → sign → Stop, up to 3 tries.
-8. Refresh mid-lesson: the dashboard shows *Pick up where you left off* and resumes on the same sign.
-9. Stop the backend: banner and disabled start. Restart it and press Retry.
-10. Block the camera in site settings: explanation, then practice without camera (no XP).
-11. Finish the lesson: completion screen and XP on the dashboard. Replay it: half XP, no bonus.
-12. Note any sign that keeps failing for a teammate who is signing it like the demo. That's our real-world accuracy data.
+7. Refresh mid-lesson: the dashboard shows *Pick up where you left off* and resumes on the same sign.
+8. Stop the backend: banner and disabled start. Restart it and press Retry.
+9. Block the camera in site settings: explanation, then practice without camera (no XP).
+10. Finish the lesson: completion screen and XP on the dashboard. Replay it: half XP, no bonus.
+11. Note any sign that keeps failing for a teammate who is signing it like the demo. That's our real-world accuracy data.
 
 Not verifiable without real people and cameras: beginner (non-fluent) signing
 accuracy, real webcam frame rates (headless Chrome managed ~15–22 fps),

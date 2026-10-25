@@ -14,7 +14,7 @@ export interface LessonState {
   lessonId: string;
   /** Signs still to be signed correctly; the head is the current question. */
   queue: string[];
-  /** Signs signed correctly (or practised, when unscored), in order. */
+  /** Signs signed correctly (or practiced, when unscored), in order. */
   done: string[];
   /** Misses per sign. */
   misses: Record<string, number>;
