@@ -225,14 +225,9 @@ export function Dashboard({
                 </h1>
               </div>
               {!account ? (
-                <div className={styles.leaderboardEmpty}>
-                  <p>
-                    Sign in to see the leaderboard and earn your place on it.
-                  </p>
-                  <Button variant="secondary" onClick={onManageAccount}>
-                    Sign in or create an account
-                  </Button>
-                </div>
+                <p className={styles.leaderboardEmpty}>
+                  Sign in to see the leaderboard and earn your place on it.
+                </p>
               ) : leaderboardLoading ? (
                 <p className={styles.leaderboardEmpty} role="status">
                   Loading leaderboard…
