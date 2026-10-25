@@ -19,6 +19,50 @@
   gap: 0.5rem;
 }
 
+/* Learn / Leaderboard: a segmented control; a raised chip slides under the selected tab. */
+.tabs {
+  position: relative;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.tabChip {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.tabChip[data-animate] {
+  transition:
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tab {
+  position: relative;
+  z-index: 1;
+  min-height: 40px;
+  padding: 0.4rem 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-weight: 800;
+  cursor: pointer;
+  transition: color 200ms ease;
+}
+
+.tab:hover,
+.tab[aria-selected='true'] {
+  color: var(--ink);
+}
+
 .stat {
   display: inline-flex;
   align-items: center;
@@ -106,14 +150,6 @@
   margin-bottom: 0.5rem;
 }
 
-.leaderboardKicker {
-  color: var(--brand);
-  font-size: 0.75rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .leaderboardHeader .sectionTitle {
   margin: 0;
 }
@@ -139,7 +175,7 @@
 
 .currentLearner {
   background: var(--brand-soft);
-  color: var(--brand-dark);
+  color: var(--brand-text);
 }
 
 .leaderboardRank {

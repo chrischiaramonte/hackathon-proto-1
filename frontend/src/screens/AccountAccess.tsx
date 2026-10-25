@@ -4,7 +4,8 @@ import { Logo } from '../components/Logo';
 
 interface Props { onSubmit: (name: string, password: string, register: boolean) => Promise<void>; onGuest: () => void }
 export function AccountAccess({ onSubmit, onGuest }: Props) {
-  const [register, setRegister] = useState(true);
+  // Sign in is the default; "Create account" switches to sign-up.
+  const [register, setRegister] = useState(false);
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -28,7 +29,7 @@ export function AccountAccess({ onSubmit, onGuest }: Props) {
   return <div role="dialog" aria-modal="true" aria-labelledby="account-access-title" style={overlay} onClick={dismiss}>
     <main style={card}>
       <Logo /><h1 id="account-access-title" style={{ marginTop: 24 }}>{register ? 'Create your account' : 'Welcome back'}</h1>
-      <p style={{ margin: '8px 0 20px', color: 'var(--ink-2)' }}>Accounts earn server-verified leaderboard XP. Your rank stays hidden unless you opt in; lesson history remains on this device.</p>
+      <p style={{ margin: '8px 0 20px', color: 'var(--ink-2)' }}>Accounts earn server-verified XP and a place on the leaderboard; lesson history remains on this device.</p>
       <form onSubmit={submit} style={{ display: 'grid', gap: 12 }}>
         <label>Display name<input required minLength={2} maxLength={24} pattern="[\w -]+" autoComplete="username" value={name} onChange={e => setName(e.target.value)} style={inputStyle} /></label>
         <label>Password<input required minLength={10} maxLength={128} type="password" autoComplete={register ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} /></label>
@@ -37,7 +38,7 @@ export function AccountAccess({ onSubmit, onGuest }: Props) {
         <Button type="submit" size="lg" disabled={busy}>{busy ? 'Please wait…' : register ? 'Create account' : 'Sign in'}</Button>
       </form>
       <p style={{ marginTop: 16 }}>{register ? 'Already have an account?' : 'New to SignSpark?'}{' '}
-        <button type="button" onClick={() => { setRegister(!register); setError(''); }}> {register ? 'Sign in' : 'Create account'}</button>
+        <button type="button" onClick={() => { setRegister(!register); setError(''); }} style={linkButton}>{register ? 'Sign in' : 'Create account'}</button>
       </p>
       <Button variant="ghost" onClick={onGuest}>Continue without an account</Button>
     </main>
@@ -45,4 +46,6 @@ export function AccountAccess({ onSubmit, onGuest }: Props) {
 }
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 20, background: 'rgb(10 12 30 / 60%)', display: 'grid', placeItems: 'center', padding: 16, overflow: 'auto' };
 const card: React.CSSProperties = { width: 'min(100%, 440px)', maxHeight: '90vh', overflow: 'auto', margin: 'auto', background: 'var(--surface)', color: 'var(--ink)', padding: 24, borderRadius: 24, boxShadow: 'var(--shadow)' };
+// The sign-in / sign-up switch reads as an inline link, not a boxed button.
+const linkButton: React.CSSProperties = { padding: 0, border: 0, background: 'none', color: 'var(--brand-text)', font: 'inherit', fontWeight: 800, textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer' };
 const inputStyle: React.CSSProperties = { display: 'block', width: '100%', marginTop: 4, padding: 12, border: '2px solid var(--line)', borderRadius: 12, background: 'var(--surface)', color: 'var(--ink)', font: 'inherit' };

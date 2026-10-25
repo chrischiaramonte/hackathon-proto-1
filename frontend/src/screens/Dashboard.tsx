@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Button } from '../components/Button';
 import { IconArrowRight, IconBolt, IconCamera, IconCheck, IconStar } from '../components/Icons';
 import { Logo } from '../components/Logo';
@@ -8,6 +8,12 @@ import { attribution, lessons, signLabel } from '../content';
 import type { Progress } from '../lib/progress';
 import styles from './Dashboard.module.css';
 import { accountApi, type AccountProfile, type LeaderboardRow } from '../lib/accountApi';
+
+type Tab = 'learn' | 'leaderboard';
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'learn', label: 'Learn' },
+  { id: 'leaderboard', label: 'Leaderboard' },
+];
 
 /** Review needs a few learned signs to be worth it. */
 const MIN_REVIEW_SIGNS = 3;
@@ -41,11 +47,35 @@ export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onRev
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState(false);
   const [manualRefresh, setManualRefresh] = useState(0);
+  const [tab, setTab] = useState<Tab>('learn');
+  const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ learn: null, leaderboard: null });
+  // The selected-tab chip slides to whichever tab is selected. It is measured rather than
+  // hard-coded so it follows font loading and label widths; the first placement doesn't animate.
+  const [chip, setChip] = useState<{ left: number; width: number; animate: boolean } | null>(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const el = tabRefs.current[tab];
+      if (el) setChip((prev) => ({ left: el.offsetLeft, width: el.offsetWidth, animate: prev !== null }));
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    Object.values(tabRefs.current).forEach((el) => el && observer.observe(el));
+    return () => observer.disconnect();
+  }, [tab]);
+  // Tabs follow the ARIA pattern: arrow keys move between them, Tab moves into the panel.
+  const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    const next = tab === 'learn' ? 'leaderboard' : 'learn';
+    setTab(next);
+    tabRefs.current[next]?.focus();
+  };
   const next = lessons.find((lesson) => !progress.completed[lesson.id]);
   const active = progress.active;
   const completedCount = lessons.filter((lesson) => progress.completed[lesson.id]).length;
 
   useEffect(() => {
+    if (tab !== 'leaderboard') return;
     if (!account) {
       setLeaderboard([]);
       setLeaderboardError(false);
@@ -59,182 +89,208 @@ export function Dashboard({ progress, activeTitle, onOpenLesson, onResume, onRev
       .catch(() => { if (active) setLeaderboardError(true); })
       .finally(() => { if (active) setLeaderboardLoading(false); });
     return () => { active = false; };
-  }, [account?.id, account?.xp, account?.leaderboardVisible, account?.friendsOnly, leaderboardRefresh, manualRefresh]);
+  }, [account?.id, account?.xp, account?.leaderboardVisible, account?.friendsOnly, leaderboardRefresh, manualRefresh, tab]);
 
   return (
     <div className={styles.page}>
       <header className={styles.topbar}>
         <Logo />
-        <Button variant="secondary" onClick={onManageAccount}>{account ? account.displayName : 'Leaderboard'}</Button>
+        <div className={styles.tabs} role="tablist" aria-label="Dashboard" onKeyDown={onTabKey}>
+          {chip && (
+            <span
+              className={styles.tabChip}
+              data-animate={chip.animate || undefined}
+              style={{ width: chip.width, transform: `translateX(${chip.left}px)` }}
+              aria-hidden="true"
+            />
+          )}
+          {TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              ref={(el) => {
+                tabRefs.current[id] = el;
+              }}
+              type="button"
+              role="tab"
+              id={`tab-${id}`}
+              aria-selected={tab === id}
+              aria-controls={`panel-${id}`}
+              tabIndex={tab === id ? 0 : -1}
+              className={styles.tab}
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className={styles.stats}>
           <span className={styles.stat} title={account ? 'Server tracked leaderboard XP' : 'XP on this device'}>
             <IconBolt className={styles.bolt} /> {account ? account.xp : progress.xp} XP
           </span>
+          <Button variant="secondary" onClick={onManageAccount}>{account ? account.displayName : 'Sign in'}</Button>
           <ThemeToggle />
         </div>
       </header>
 
-      <main className={styles.main}>
-        <section className={styles.hero}>
-          {active && activeTitle ? (
-            <>
-              <p className={styles.kicker}>Pick up where you left off</p>
-              <h1 className={styles.heroTitle}>{activeTitle}</h1>
-              <div className={styles.heroProgress}>
-                <ProgressBar
-                  value={active.done.length}
-                  max={active.done.length + active.queue.length}
-                  label="Lesson progress"
-                />
-                <span>
-                  {active.done.length}/{active.done.length + active.queue.length}
-                </span>
+      <main>
+        {tab === 'leaderboard' ? (
+          <div role="tabpanel" id="panel-leaderboard" aria-labelledby="tab-leaderboard" className={styles.main}>
+            <section className={styles.leaderboard} aria-labelledby="leaderboard-heading">
+              <div className={styles.leaderboardHeader}>
+                <h1 id="leaderboard-heading" className={styles.sectionTitle}>
+                  Leaderboard
+                </h1>
+                {account && <Button variant="ghost" onClick={() => setManualRefresh((n) => n + 1)}>Refresh</Button>}
               </div>
-              <Button size="lg" onClick={onResume}>
-                Continue <IconArrowRight />
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className={styles.kicker}>{completedCount === 0 ? 'Learn ASL with your webcam' : 'Keep going'}</p>
-              <h1 className={styles.heroTitle}>
-                {next ? `Up next: ${next.title}` : 'You’ve finished every lesson!'}
-              </h1>
-              <p className={styles.heroText}>
-                Watch a Deaf signer, sign it back to your camera, and get instant feedback from a sign-recognition
-                model.
-              </p>
-              {next ? (
-                <Button size="lg" onClick={() => onOpenLesson(next.id)}>
-                  {completedCount === 0 ? 'Start learning' : 'Start lesson'} <IconArrowRight />
-                </Button>
+              {!account ? (
+                <div className={styles.leaderboardEmpty}>
+                  <p>Sign in to see the leaderboard and earn your place on it.</p>
+                  <Button variant="secondary" onClick={onManageAccount}>Sign in or create an account</Button>
+                </div>
+              ) : leaderboardLoading ? (
+                <p className={styles.leaderboardEmpty} role="status">Loading leaderboard…</p>
+              ) : leaderboardError ? (
+                <p className={styles.leaderboardEmpty} role="alert">Couldn’t load the leaderboard. Try refreshing.</p>
+              ) : leaderboard.length ? (
+                <ol className={styles.leaderboardList}>
+                  {leaderboard.map((row) => (
+                    <li key={`${row.rank}-${row.displayName}`} className={`${styles.leaderboardRow} ${row.you ? styles.currentLearner : ''}`}>
+                      <span className={styles.leaderboardRank}>{row.rank}</span>
+                      <span className={styles.leaderboardName}>{row.displayName}{row.you ? ' (you)' : ''}</span>
+                      <span className={styles.leaderboardXp}><IconBolt className={styles.bolt} /> {row.xp} XP</span>
+                    </li>
+                  ))}
+                </ol>
               ) : (
-                <Button size="lg" onClick={onReview} disabled={progress.learned.length < MIN_REVIEW_SIGNS}>
-                  Review your signs <IconArrowRight />
-                </Button>
+                <div className={styles.leaderboardEmpty}>
+                  <p>No learners on the leaderboard yet. Finish a sign to get on it.</p>
+                </div>
               )}
-            </>
-          )}
-        </section>
-
-        <section className={styles.leaderboard} aria-labelledby="leaderboard-heading">
-          <div className={styles.leaderboardHeader}>
-            <div>
-              <p className={styles.leaderboardKicker}>Community</p>
-              <h2 id="leaderboard-heading" className={styles.sectionTitle}>
-                {account?.friendsOnly ? 'Friends leaderboard' : 'Leaderboard'}
-              </h2>
-            </div>
-            {account && <Button variant="ghost" onClick={() => setManualRefresh((n) => n + 1)}>Refresh</Button>}
+            </section>
           </div>
-          {!account ? (
-            <div className={styles.leaderboardEmpty}>
-              <p>Sign in to see the leaderboard. Your rank stays hidden until you opt in.</p>
-              <Button variant="secondary" onClick={onManageAccount}>Sign in or create an account</Button>
-            </div>
-          ) : leaderboardLoading ? (
-            <p className={styles.leaderboardEmpty} role="status">Loading leaderboard…</p>
-          ) : leaderboardError ? (
-            <p className={styles.leaderboardEmpty} role="alert">Couldn’t load the leaderboard. Try refreshing.</p>
-          ) : leaderboard.length ? (
-            <ol className={styles.leaderboardList}>
-              {leaderboard.map((row) => (
-                <li key={`${row.rank}-${row.displayName}`} className={`${styles.leaderboardRow} ${row.you ? styles.currentLearner : ''}`}>
-                  <span className={styles.leaderboardRank}>{row.rank}</span>
-                  <span className={styles.leaderboardName}>{row.displayName}{row.you ? ' (you)' : ''}</span>
-                  <span className={styles.leaderboardXp}><IconBolt className={styles.bolt} /> {row.xp} XP</span>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <div className={styles.leaderboardEmpty}>
-              <p>{account.friendsOnly
-                ? 'No friends are on the leaderboard yet. Add friends from your account settings.'
-                : account.leaderboardVisible
-                  ? 'No learners have opted in yet. You’ll show up here when your score is ranked.'
-                  : 'No ranked learners yet. Your score is private until you opt in.'}</p>
-              <Button variant="secondary" onClick={onManageAccount}>Leaderboard settings</Button>
-            </div>
-          )}
-        </section>
-
-        <section aria-labelledby="lessons-heading">
-          <h2 id="lessons-heading" className={styles.sectionTitle}>
-            Lessons
-          </h2>
-          <ol className={styles.path}>
-            {lessons.map((lesson, i) => {
-              const record = progress.completed[lesson.id];
-              const inProgress = active?.lessonId === lesson.id;
-              return (
-                <li key={lesson.id} className={`${styles.lesson} ${record ? styles.done : ''}`}>
-                  <span className={styles.node} aria-hidden="true">
-                    {record ? <IconCheck /> : i + 1}
-                  </span>
-                  <div className={styles.lessonBody}>
-                    <h3 className={styles.lessonTitle}>{lesson.title}</h3>
-                    <p className={styles.lessonText}>{lesson.description}</p>
-                    <ul className={styles.chips} aria-label="Signs in this lesson">
-                      {lesson.signs.map((sign) => (
-                        <li key={sign} className={progress.learned.includes(sign) ? styles.learned : undefined}>
-                          {signLabel(sign)}
-                        </li>
-                      ))}
-                    </ul>
-                    {record && (
-                      <p className={styles.meta}>
-                        <IconStar className={styles.star} /> Best first-try accuracy {Math.round(record.bestAccuracy * 100)}
-                        % · replays earn half XP
-                      </p>
-                    )}
+        ) : (
+          <div role="tabpanel" id="panel-learn" aria-labelledby="tab-learn" className={styles.main}>
+            <section className={styles.hero}>
+              {active && activeTitle ? (
+                <>
+                  <p className={styles.kicker}>Pick up where you left off</p>
+                  <h1 className={styles.heroTitle}>{activeTitle}</h1>
+                  <div className={styles.heroProgress}>
+                    <ProgressBar
+                      value={active.done.length}
+                      max={active.done.length + active.queue.length}
+                      label="Lesson progress"
+                    />
+                    <span>
+                      {active.done.length}/{active.done.length + active.queue.length}
+                    </span>
                   </div>
-                  <Button
-                    variant={record ? 'secondary' : 'primary'}
-                    onClick={() => (inProgress ? onResume() : onOpenLesson(lesson.id))}
-                    aria-label={`${inProgress ? 'Continue' : record ? 'Practice again' : 'Start'}: ${lesson.title}`}
-                  >
-                    {inProgress ? 'Continue' : record ? 'Practice' : 'Start'}
+                  <Button size="lg" onClick={onResume}>
+                    Continue <IconArrowRight />
                   </Button>
+                </>
+              ) : (
+                <>
+                  <p className={styles.kicker}>{completedCount === 0 ? 'Learn ASL with your webcam' : 'Keep going'}</p>
+                  <h1 className={styles.heroTitle}>
+                    {next ? `Up next: ${next.title}` : 'You’ve finished every lesson!'}
+                  </h1>
+                  <p className={styles.heroText}>
+                    Watch a Deaf signer, sign it back to your camera, and get instant feedback from a sign-recognition
+                    model.
+                  </p>
+                  {next ? (
+                    <Button size="lg" onClick={() => onOpenLesson(next.id)}>
+                      {completedCount === 0 ? 'Start learning' : 'Start lesson'} <IconArrowRight />
+                    </Button>
+                  ) : (
+                    <Button size="lg" onClick={onReview} disabled={progress.learned.length < MIN_REVIEW_SIGNS}>
+                      Review your signs <IconArrowRight />
+                    </Button>
+                  )}
+                </>
+              )}
+            </section>
+
+            <section aria-labelledby="lessons-heading">
+              <h2 id="lessons-heading" className={styles.sectionTitle}>
+                Lessons
+              </h2>
+              <ol className={styles.path}>
+                {lessons.map((lesson, i) => {
+                  const record = progress.completed[lesson.id];
+                  const inProgress = active?.lessonId === lesson.id;
+                  return (
+                    <li key={lesson.id} className={`${styles.lesson} ${record ? styles.done : ''}`}>
+                      <span className={styles.node} aria-hidden="true">
+                        {record ? <IconCheck /> : i + 1}
+                      </span>
+                      <div className={styles.lessonBody}>
+                        <h3 className={styles.lessonTitle}>{lesson.title}</h3>
+                        <p className={styles.lessonText}>{lesson.description}</p>
+                        <ul className={styles.chips} aria-label="Signs in this lesson">
+                          {lesson.signs.map((sign) => (
+                            <li key={sign} className={progress.learned.includes(sign) ? styles.learned : undefined}>
+                              {signLabel(sign)}
+                            </li>
+                          ))}
+                        </ul>
+                        {record && (
+                          <p className={styles.meta}>
+                            <IconStar className={styles.star} /> Best first-try accuracy {Math.round(record.bestAccuracy * 100)}
+                            % · replays earn half XP
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant={record ? 'secondary' : 'primary'}
+                        onClick={() => (inProgress ? onResume() : onOpenLesson(lesson.id))}
+                        aria-label={`${inProgress ? 'Continue' : record ? 'Practice again' : 'Start'}: ${lesson.title}`}
+                      >
+                        {inProgress ? 'Continue' : record ? 'Practice' : 'Start'}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+
+            <section className={styles.review}>
+              <div>
+                <h2 className={styles.sectionTitle}>Review</h2>
+                <p className={styles.lessonText}>
+                  {progress.learned.length >= MIN_REVIEW_SIGNS
+                    ? `Mix up to 6 of the ${progress.learned.length} signs you’ve learned.`
+                    : `Finish a lesson to unlock review (needs ${MIN_REVIEW_SIGNS} learned signs).`}
+                </p>
+              </div>
+              <Button variant="secondary" onClick={onReview} disabled={progress.learned.length < MIN_REVIEW_SIGNS}>
+                Review
+              </Button>
+            </section>
+
+            <section className={styles.how} aria-labelledby="how-heading">
+              <h2 id="how-heading" className={styles.sectionTitle}>
+                How it works
+              </h2>
+              <ol className={styles.steps}>
+                <li>
+                  <strong>Watch.</strong> Every sign is demonstrated by Deaf signers from the PopSign ASL dataset.
                 </li>
-              );
-            })}
-          </ol>
-        </section>
-
-        <section className={styles.review}>
-          <div>
-            <h2 className={styles.sectionTitle}>Review</h2>
-            <p className={styles.lessonText}>
-              {progress.learned.length >= MIN_REVIEW_SIGNS
-                ? `Mix up to 6 of the ${progress.learned.length} signs you’ve learned.`
-                : `Finish a lesson to unlock review (needs ${MIN_REVIEW_SIGNS} learned signs).`}
-            </p>
+                <li>
+                  <strong>Sign.</strong> MediaPipe tracks your hands and face in the browser.{' '}
+                  <IconCamera className={styles.inline} /> Your video never leaves this device: only landmark coordinates
+                  are sent for recognition.
+                </li>
+                <li>
+                  <strong>Get feedback.</strong> A model trained on 250 everyday signs (Google’s ASL Signs competition
+                  winner) checks whether your sign matches. It recognises the sign as a whole; it can’t grade handshape
+                  details, so use the demo to self-correct.
+                </li>
+              </ol>
+            </section>
           </div>
-          <Button variant="secondary" onClick={onReview} disabled={progress.learned.length < MIN_REVIEW_SIGNS}>
-            Review
-          </Button>
-        </section>
-
-        <section className={styles.how} aria-labelledby="how-heading">
-          <h2 id="how-heading" className={styles.sectionTitle}>
-            How it works
-          </h2>
-          <ol className={styles.steps}>
-            <li>
-              <strong>Watch.</strong> Every sign is demonstrated by Deaf signers from the PopSign ASL dataset.
-            </li>
-            <li>
-              <strong>Sign.</strong> MediaPipe tracks your hands and face in the browser.{' '}
-              <IconCamera className={styles.inline} /> Your video never leaves this device: only landmark coordinates
-              are sent for recognition.
-            </li>
-            <li>
-              <strong>Get feedback.</strong> A model trained on 250 everyday signs (Google’s ASL Signs competition
-              winner) checks whether your sign matches. It recognises the sign as a whole; it can’t grade handshape
-              details, so use the demo to self-correct.
-            </li>
-          </ol>
-        </section>
+        )}
       </main>
 
       <footer className={styles.footer}>

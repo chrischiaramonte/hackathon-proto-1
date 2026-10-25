@@ -9,6 +9,11 @@ import { AccountAccess } from './screens/AccountAccess';
 import { AccountCenter } from './screens/AccountCenter';
 import { accountApi, type AccountProfile } from './lib/accountApi';
 
+/** Everyone is on the public leaderboard (there are no privacy settings in the app). */
+function onLeaderboard(user: AccountProfile): Promise<AccountProfile> {
+  return user.leaderboardVisible && !user.friendsOnly ? Promise.resolve(user) : accountApi.privacy(true, false);
+}
+
 const REVIEW_ID = 'review';
 const REVIEW_SIZE = 6;
 
@@ -50,9 +55,9 @@ export function App() {
   const [accountPanel, setAccountPanel] = useState(false);
   const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
 
-  useEffect(() => { void accountApi.me().then(setAccount).catch(() => setAccount(null)); }, []);
+  useEffect(() => { void accountApi.me().then(onLeaderboard).then(setAccount).catch(() => setAccount(null)); }, []);
   useEffect(() => {
-    if (screen.name === 'dashboard' && account) void accountApi.me().then(setAccount).catch(() => setAccount(null));
+    if (screen.name === 'dashboard' && account) void accountApi.me().then(onLeaderboard).then(setAccount).catch(() => setAccount(null));
   }, [screen.name]);
 
   useEffect(() => saveProgress(progress), [progress]);
@@ -128,12 +133,11 @@ export function App() {
       leaderboardRefresh={leaderboardRefresh}
     />
     {accountPanel && (account
-      ? <AccountCenter account={account} onClose={() => { setAccountPanel(false); setLeaderboardRefresh((n) => n + 1); }} onAccountChange={setAccount}
-          onSignOut={() => { void accountApi.logout().finally(() => { setAccount(null); setAccountPanel(false); }); }}
-          onDelete={() => { void accountApi.deleteAccount().finally(() => { setAccount(null); setAccountPanel(false); }); }} />
+      ? <AccountCenter account={account} onClose={() => { setAccountPanel(false); setLeaderboardRefresh((n) => n + 1); }}
+          onSignOut={() => { void accountApi.logout().finally(() => { setAccount(null); setAccountPanel(false); }); }} />
       : <AccountAccess onGuest={() => setAccountPanel(false)} onSubmit={async (name, password, register) => {
           const user = register ? await accountApi.register(name, password) : await accountApi.login(name, password);
-          setAccount(user); setAccountPanel(false);
+          setAccount(await onLeaderboard(user)); setAccountPanel(false);
         }} />)}
     </>
   );
