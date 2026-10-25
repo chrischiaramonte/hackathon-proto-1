@@ -76,7 +76,7 @@ the backend neither stores nor logs them.
 
 **Lesson flow** (DESIGN.md §4): each question is _learn_ (looping demo by a
 real Deaf signer, with slow motion and a second signer) → _practice_ (live
-camera, 20 s in auto mode) → _feedback_. Accepted signs earn XP; a miss (time
+camera, 10 s in auto mode) → _feedback_. Accepted signs earn XP; a miss (time
 out or Skip) sends the sign to the back of the queue, and the lesson ends only
 when every sign has been signed correctly. Then you get a completion screen with
 XP, first-try accuracy and per-sign results.
