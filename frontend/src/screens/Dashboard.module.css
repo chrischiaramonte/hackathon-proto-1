@@ -488,7 +488,7 @@
   }
 
   .logout,
-  .stats > button:last-child {
+  .stats > :nth-child(2) {
     width: 40px;
     height: 40px;
     min-height: 40px;

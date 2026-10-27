@@ -205,6 +205,7 @@ export function Dashboard({
               <IconBolt className={styles.bolt} />{" "}
               {account ? account.xp : progress.xp} XP
             </span>
+            <ThemeToggle />
             {account ? (
               <button
                 type="button"
@@ -224,7 +225,6 @@ export function Dashboard({
                 Sign in
               </Button>
             )}
-            <ThemeToggle />
           </div>
         </div>
       </header>
