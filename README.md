@@ -1,158 +1,59 @@
 # cosign: learn ASL with your webcam
 
-A Duolingo-style web app for family and friends of Deaf people. Watch a Deaf
-signer demonstrate a sign, sign it back to your webcam, and a pretrained
-sign-recognition model decides whether it matched. Guest lesson progress is
-saved in the browser; optional accounts store leaderboard XP on the backend.
+**cosign** is a gamified web app that helps family and friends of Deaf people learn American Sign Language (ASL). You watch a real Deaf signer demonstrate a sign, sign it back to your webcam, and a pretrained sign-recognition model checks whether it matched.
 
-Everything below was built to the scope in [DESIGN.md](DESIGN.md). Recognition
-is real: no predictions are faked, and every number in this README comes from a
-command you can rerun.
+**Live demo:** [cosign-learning.vercel.app](https://cosign-learning.vercel.app)
 
-**Contents:** [Quick start](#quick-start) · [How it works](#how-it-works) ·
-[Recognition pipeline](#recognition-pipeline-and-what-we-verified) ·
-[API](#api-contract) · [Testing](#testing) · [Manual webcam checklist](#manual-testing-with-a-real-webcam) ·
-[Limitations](#known-limitations) · [Team plan](#suggested-split-for-four-developers) ·
-[Credits](#credits-and-licences)
+![cosign](banner.jpg)
 
 ## Quick start
 
-Prerequisites: [uv](https://docs.astral.sh/uv/) (it fetches Python 3.12 if
-needed), Node 22.12+ (or 24), the [SpacetimeDB CLI](https://spacetimedb.com/install)
-2.13+ (for accounts), and Chrome or Edge (the MediaPipe build we use is most
-reliable there).
+**Prerequisites:** [uv](https://docs.astral.sh/uv/) (installs Python 3.12 if needed), Node 22.12+, the [SpacetimeDB CLI](https://spacetimedb.com/install) 2.13+ (only needed for accounts), and Chrome or Edge.
+
+**1. Set up the accounts database (one time)**
 
 ```bash
-# One time setup
+# Install SpacetimeDB CLI
 curl -sSf https://install.spacetimedb.com | sh
+
+# Sign in
 spacetime login
 spacetime login show
-# Send the ID to DB owner after login show
-# The DB owner should run spacetime call --server maincloud calhack-r0hwe add_admin <identity>
+# Send this identity to the database owner
+# The owner runs: spacetime call --server maincloud calhack-r0hwe add_admin <identity>
 
-# After being added as admin
+# Once you are an admin:
 cd spacetimedb && npm install
 spacetime publish --server maincloud --module-path spacetimedb --yes calhack-r0hwe
+```
 
-# Terminal 1: recognition service on http://127.0.0.1:8000
+**2. Start the recognition service** (http://127.0.0.1:8000)
+
+```bash
 cd backend
-uv sync                                   # FastAPI + LiteRT runtime + pytest
-uv run python scripts/download_model.py   # 11 MB model, pinned commit + SHA-256 check
+uv sync
+uv run python scripts/download_model.py   # 11 MB model, checked by SHA-256
 uv run uvicorn app.main:app --port 8000
+```
 
-# Terminal 2: web app on http://localhost:5173
+**3. Start the web app** (http://localhost:5173)
+
+```bash
 cd frontend
-npm install                               # also copies the MediaPipe runtime into public/
+npm install
 npm run dev
 ```
 
-Open http://localhost:5173, allow the camera, and start **First words**. The
-Vite dev server proxies `/api` to the backend, so there is no CORS setup. For a
-production build: `npm run build && npm run preview` (same proxy, port 4173).
+Open http://localhost:5173, allow the camera, and start **First words**.
 
-Demo tips: sit 60–90 cm from the camera with your head and both hands (down to
-your waist) in view, face a light, and run the backend on the demo laptop
-itself. Recognition never needs the internet; everything, fonts and MediaPipe
-included, is served locally.
+For the best results, sit 60–90 cm from the camera with your head and both hands in view, and face a light source.
 
 ## How it works
 
-```
- Browser (React + TypeScript, Vite)                     Backend (FastAPI)
- ─────────────────────────────────────                   ───────────────────────────────
- webcam ──► MediaPipe Holistic (WASM, legacy)           POST /api/recognize
-            raw unmirrored frames, ~15–30 fps            1. validate shapes (pydantic)
-                 │ 468 face + 2×21 hand + 33 pose        2. assemble (T, 543, 3), NaN = missing
-                 ▼   landmarks per frame                 3. drop empty frames, trim idle ends
- AttemptSegmenter ── attempt windows (JSON) ──────────►  4. quality gates: hands / face / motion
-                                                         5. TFLite model ─► 250 logits ─► softmax
-                 ▲                                       6. accept if target is top-1, p ≥ 0.4,
- lesson UI ◄──── status, probability, top-5 ◄─────────      and leads the runner-up by ≥ 0.1
- queue, XP, localStorage
-```
-
-The video never leaves the browser; only landmark coordinates are sent, and
-the backend neither stores nor logs them.
-
-**Lesson flow** (DESIGN.md §4): each question is _learn_ (looping demo by a
-real Deaf signer, with slow motion and a second signer) → _practice_ (live
-camera, 10 s) → _feedback_. First you sign every word once, in order; a miss
-(time out or Skip) keeps you on that word. Then each word comes back, in random
-order, as a typed question ("What does this sign mean?"); a miss there sends the
-word back to signing, then typing again. The lesson ends when every word has
-passed both. Then you get a completion screen with XP, first-try accuracy and
-per-sign results.
-
-**Game rules** (`frontend/src/lib/lessonEngine.ts`): every correct answer (each
-word is signed, then typed) earns +10 XP, or +5 once that word has been missed;
-+20 the first time a lesson is completed. Replaying a completed lesson
-earns half and no bonus, so the easiest lesson can't be farmed. **Review**
-unlocks after 3 learned signs and mixes up to 6 of them.
-
-**Persistence** (`frontend/src/lib/progress.ts`): XP, completed lessons,
-learned signs and the in-progress lesson are kept in `localStorage`. Every
-answer is saved immediately, so a refresh or closed tab resumes on the same
-sign. Corrupt or outdated data falls back safely.
-
-**Accounts and leaderboard:** Use the dashboard's Leaderboard button to create
-an account or sign in. New accounts are private by default. Learners can opt
-into the global leaderboard or limit their visible rank to accepted friends;
-friend requests use exact display names. Password hashes (PBKDF2), opaque
-HTTP-only sessions, XP events and friend relationships are stored in
-[SpacetimeDB](https://spacetimedb.com) (see [Accounts database](#accounts-database)). The server
-awards leaderboard XP only after an accepted recognition result or validated
-translation answer, with repeat awards of 10, 5, 2, then 0 XP per sign and
-lesson. Account deletion cascades through sessions, XP and friend links.
-Password recovery is not available yet. Production deployments must use HTTPS
-and set `COSIGN_COOKIE_SECURE=1`.
-
-**When things go wrong:**
-
-| Situation                                                                      | Behaviour                                                                                                                                                                                                                    |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Camera blocked / missing / in use / unplugged                                  | Specific explanation and Retry. "Practice without camera" runs the lesson unscored (no XP, no completion). Scored practice can't start without a working camera, and an unplugged camera returns to the demo without a miss. |
-| Backend unreachable                                                            | Banner, Retry and "Practice without scoring"; the start button is disabled while it's down. Progress is never lost.                                                                                                          |
-| No hands, face out of view, hand held still                                    | Not scored. The learner is told what to fix (`no_hands`, `no_face`, `no_motion`).                                                                                                                                            |
-| Dark room, bright window behind you, too close or far, hands leaving the frame | Live coaching hints over the camera.                                                                                                                                                                                         |
-| Near-tie between similar signs                                                 | Not accepted until the model clearly prefers the target.                                                                                                                                                                     |
-
-## Accounts database
-
-`spacetimedb/src/index.ts` is a SpacetimeDB TypeScript module. All of its tables
-are private:
-
-| Table        | Key                                      | Holds                                                                                                               |
-| ------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `user`       | `id` (auto-inc), `name_key` unique       | display name, lowercased `name_key` for case-insensitive uniqueness, PBKDF2 hash, privacy flags, running `xp` total |
-| `session`    | `token_hash`                             | SHA-256 of the cookie token, `user_id`, `expires_at` (30 days)                                                      |
-| `xp_event`   | `id`; index `(user_id, lesson_id, sign)` | one row per award: `award_index` 0–2, `points` 10/5/2                                                               |
-| `friendship` | `pair_key` = `"low:high"`                | one row per pair, `sender_id`, `accepted`                                                                           |
-| `admin`      | `identity`                               | the publisher, set in `init`                                                                                        |
-
-SpacetimeDB has no Python SDK. FastAPI (`backend/app/spacetime.py`) calls the
-module's procedures over HTTP (`POST /v1/database/signspark/call/<name>`),
-authenticated as the publisher, and every procedure rejects other callers.
-Python keeps password hashing, cookies and the curriculum check. Each procedure
-runs in one transaction, so name uniqueness, the 10/5/2 XP ladder, friend
-request acceptance and account-deletion cascades are atomic. The `/api/account`
-contract is unchanged.
-
-Configuration: `SIGNSPARK_STDB_URL` (default `https://maincloud.spacetimedb.com`),
-`SIGNSPARK_STDB_DB` (default `calhack-r0hwe`) and `SIGNSPARK_STDB_TOKEN`
-(default: the token in `~/.config/spacetime/cli.toml`; it must belong to an
-identity in the module's `admin` table). If the
-database is down, account routes return 503 and recognition still works without
-awarding XP. To work offline, run `spacetime start`, publish with
-`--server local --delete-data ... signspark` and set
-`SIGNSPARK_STDB_URL=http://127.0.0.1:3000 SIGNSPARK_STDB_DB=signspark`.
-
-**Teammates sharing the database:** `init` makes the publisher the first
-admin. Each teammate runs `spacetime login`, then `spacetime login show`, and
-sends their identity to an existing admin, who runs
-`spacetime call --server maincloud calhack-r0hwe add_admin <identity>`. Their
-backend then works with their own login and no token sharing. Maincloud website
-roles don't grant this. Never republish with `--delete-data`: it wipes all
-accounts and makes only the publisher an admin again.
+1. **In the browser**, MediaPipe Holistic tracks 543 landmarks per frame (face, both hands and body). A segmenter cuts the stream into sign attempts and sends just those coordinates to the backend.
+2. **On the backend**, FastAPI checks the input, trims idle frames, and rejects attempts with no hands, no face or no movement. Then it runs the sign model.
+3. **The model** is the 1st-place solution from Google's [Isolated Sign Language Recognition](https://huggingface.co/sign/kaggle-asl-signs-1st-place) Kaggle competition, and it ranks 250 signs. An attempt is accepted only when the target sign is the top guess, with at least 40% confidence and a 10-point lead over the next guess.
+4. **Accounts are optional.** They are stored in SpacetimeDB and keep leaderboard XP, sessions and friendships. XP is awarded only after an accepted recognition result.
 
 ## Repository layout
 
@@ -160,236 +61,47 @@ accounts and makes only the publisher an admin again.
 spacetimedb/
   src/index.ts          accounts database: tables and admin-only procedures
 backend/
-  app/accounts.py       /api/account routes; app/spacetime.py is the HTTP client
-  app/landmarks.py      543-row frame layout (face | left hand | pose | right hand)
-  app/classifier.py     TFLite inference only: empty-frame filter, softmax, labels
-  app/recognition.py    acceptance policy: trimming, quality gates, thresholds
-  app/schemas.py        HTTP contract (pydantic, camelCase JSON)
   app/main.py           FastAPI routes
-  scripts/              model download, PopSign fetch, landmark extraction,
-                        evaluation, calibration, live replay, demo clips, fake webcams
-  tests/                pytest, incl. real PopSign landmark fixtures
+  app/recognition.py    acceptance rules: trimming, quality gates, thresholds
+  app/classifier.py     TFLite model inference
+  app/accounts.py       /api/account routes (app/spacetime.py is the DB client)
+  app/schemas.py        API request and response formats
+  scripts/              model download, data fetching, evaluation, calibration
+  tests/                pytest, including real PopSign landmark data
 frontend/
-  src/content/          lessons.json (hand-written), clips.json (generated)
-  src/lib/              pure logic: api, lessonEngine, progress, segmenter, framing, landmarks, holistic
-  src/hooks/            useCamera, useRecognizer
-  src/components/       CameraView, SignDemo, FeedbackSheet, ModelGuesses, Button, …
   src/screens/          Dashboard, LessonScreen, CompleteScreen
-  public/signs/         46 demo clips (PopSign, CC BY 4.0, ~4 MB)
-  e2e/                  browser end-to-end test with a fake webcam
+  src/components/       CameraView, SignDemo, FeedbackSheet, ModelGuesses, …
+  src/hooks/            useCamera, useRecognizer
+  src/lib/              lesson engine, progress, segmenter, API client
+  src/content/          lessons.json and clips.json
+  public/signs/         46 demo clips of Deaf signers
+  e2e/                  browser test with a fake webcam
+docs/
+  architecture.svg      system diagram
 ```
-
-## Recognition pipeline and what we verified
-
-**Model.** [`sign/kaggle-asl-signs-1st-place`](https://huggingface.co/sign/kaggle-asl-signs-1st-place)
-(MIT), the winning ensemble of Google's _Isolated Sign Language Recognition_
-Kaggle competition. Verified by reading the [original training code](https://github.com/hoyso48/Google---Isolated-Sign-Language-Recognition-1st-place-solution)
-and probing the model file:
-
-- Input `(T, 543, 3)` float32 (any T), MediaPipe Holistic landmarks in the
-  competition's row order: face 0–467, left hand 468–488, pose 489–521, right
-  hand 522–542. Missing parts are NaN.
-- Output: 250 **logits** (not probabilities). Labels from
-  `sign_to_prediction_index_map.json`.
-- Normalisation happens inside the graph: it centres on lip landmark 17,
-  divides by the per-axis std, keeps x/y only, sets NaN to 0, and reads at most
-  384 frames. Pose rows and z are ignored, and webcam aspect ratio cancels out
-  (verified numerically).
-- Training dropped frames with no landmarks, but the graph doesn't, and such
-  frames change the logits. **The backend drops them** (`classifier.py`).
-- The training videos are unmirrored phone selfies, so the browser feeds
-  MediaPipe raw camera frames (`selfieMode: false`) and mirrors only the preview.
-- Face mesh must be the 468-point version (`refineFaceLandmarks: false`).
-
-**Ground truth.** The competition data was extracted from
-[PopSign ASL v1.0](https://signdata.cc.gatech.edu/view/datasets/popsign_v1_0/)
-(Deaf signers, CC BY 4.0). `scripts/fetch_popsign_samples.py` pulls individual
-test-split videos with HTTP range requests. We ran MediaPipe Holistic (Python;
-the same legacy Holistic solution and settings as the browser) on **168 clips of 28 signs from
-4–8 signers each**:
-
-| Variant (`scripts/evaluate_samples.py`)   | Top-1   | Top-5 | mean p(true sign) |
-| ----------------------------------------- | ------- | ----- | ----------------- |
-| As recorded                               | **97%** | 99%   | 0.83              |
-| Mirrored, as if signed left-handed        | 96%     | 99%   | 0.83              |
-| Every other frame (~15 fps browser)       | 95%     | 99%   | 0.81              |
-| Trimmed to the hand-visible span          | 98%     | 100%  | 0.86              |
-| 1 s of idle frames added each side        | 96%     | 99%   | 0.73              |
-| Landmarks from horizontally flipped video | 98%     | 99%   | 0.83              |
-
-So the layout, label mapping and preprocessing are right, and left-handed
-signing and a slow browser frame rate are fine. Because idle frames hurt
-confidence, the backend trims hands-down frames at both ends. The misses are
-plausible confusions (dad→man, mom→grandma, sleep→sleepy, brother→gift); those
-weaker signs were kept out of the lessons except the family signs, which still
-score well.
-
-**Acceptance rule** (`app/recognition.py`, calibrated with
-`scripts/calibrate_thresholds.py`). Accept when the target is the top
-prediction with p ≥ 0.4 and a lead of ≥ 0.1 over the runner-up. Quality gates
-refuse to score attempts without hands, without a face, or with a hand held
-still. At p ≥ 0.4, 95.8% of genuine single clips pass, and a clip of a
-different sign is accepted for a given wrong target 0.02% of the time.
-Synthetic nonsense scored against a _different_ target: shuffled frames 0.02%,
-a hand wandering randomly 0.07%, frozen hands 0% (motion gate), reversed signs
-0.37%.
-
-**Live behaviour** (`scripts/simulate_live.py`) replays the exact auto-mode
-segmenter timing over all 168 clips and scores every window:
-
-| Frame rate | Accepted on one pass of the sign | False accept per wrong target |
-| ---------- | -------------------------------- | ----------------------------- |
-| ~30 fps    | **96.4%**                        | 0.022% (1 of 4,536)           |
-| ~15 fps    | **93.5%**                        | 0%                            |
-
-**In the real browser** (`npm run e2e`): headless Chrome's fake webcam played
-PopSign videos by signers who do _not_ appear in the demo clips, through the
-real MediaPipe JS → API → model path.
-
-- 11 different signs across _First words_ and _Family_ were accepted, at p 0.41–0.98, 1–4 s after pressing "I'm ready".
-- Showing HELLO while the lesson asked for PLEASE: 14 of 14 windows were rejected (p = 0.00), then "Time's up" and a miss.
-- The margin rule held back MOM vs GRANDMA (0.22 vs 0.20) until a clear MOM (0.41 vs 0.15).
-
-**What a probability is not:** the model ranks 250 signs. It cannot grade
-handshape, location or movement separately, and it weighs handshape and
-location more than movement _direction_ (a sign played backwards often still
-matches). The UI therefore says "the model is N% sure" and shows its top
-guesses, never a quality grade.
-
-## API contract
-
-`POST /api/recognize` (see `backend/app/schemas.py`; FastAPI docs at
-http://127.0.0.1:8000/docs)
-
-```jsonc
-// request: 1–384 frames, each part null when MediaPipe didn't detect it
-{
-  "target": "thankyou",                       // a gloss from GET /api/signs
-  "frames": [
-    { "face": [[x, y, z], ...468], "leftHand": null, "pose": [[x, y, z], ...33], "rightHand": [[x, y, z], ...21] }
-  ]
-}
-// response
-{
-  "target": "thankyou",
-  "status": "accepted",                       // accepted | close | rejected | no_hands | no_face | no_motion
-  "accepted": true,
-  "targetProbability": 0.86,                  // null when not scored
-  "targetRank": 1,
-  "topPredictions": [{ "sign": "thankyou", "probability": 0.86 }, "...4 more"],
-  "framesReceived": 14, "framesUsed": 6, "handFrames": 6
-}
-```
-
-Also `GET /api/health` and `GET /api/signs` (the 250 glosses). Malformed input,
-including NaN coordinates, gets a 422 that never echoes landmark data back.
 
 ## Testing
 
-| Command                                             | What it covers                                                                                                                                                                                                                                                                                                                                              | Result        |
-| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `cd backend && uv run pytest`                       | Layout; model output; **real PopSign fixtures predicted and accepted**, also mirrored; wrong signs rejected; gates; trimming; margin rule; API contract and validation; lesson content only uses model labels and has clips on disk; accounts, XP ladder, friends, leaderboard privacy and deletion against a live SpacetimeDB (skipped if none is running) | 48 passed     |
-| `cd frontend && npm test`                           | Lesson flow (sign then type, misses, review), progress and XP rules; persistence, corruption and storage failures; segmenter timing; API client errors and timeouts; landmark conversion; framing and lighting hints; content integrity                                                                                                                                                      | 42 passed     |
-| `cd frontend && npm run typecheck && npm run build` | Strict TypeScript, production build                                                                                                                                                                                                                                                                                                                         | OK            |
-| `cd frontend && npm run e2e`                        | Real browser, real MediaPipe, real model: accept, reject and retry, resume after reload, full lesson (6 words signed and typed) with 130 XP, camera denied, server down                                                                                                                                                                                                    | 5 of 5 passed |
+| Command                                             | What it covers                                                                      | Result        |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------- |
+| `cd backend && uv run pytest`                       | Model output, accept/reject rules, API contract, accounts and leaderboard           | 48 passed     |
+| `cd frontend && npm test`                           | Lesson flow, XP rules, saved progress, segmenter, API errors                        | 42 passed     |
+| `cd frontend && npm run typecheck && npm run build` | Strict TypeScript and production build                                              | OK            |
+| `cd frontend && npm run e2e`                        | Full lesson in a real browser with a fake webcam, real MediaPipe and the real model | 5 of 5 passed |
 
-The end-to-end test and the evaluation scripts need the optional data tooling:
+The end-to-end test needs extra data tools:
 
 ```bash
 cd backend
-uv sync --extra validation   # mediapipe 0.10.21 (last with legacy Holistic), opencv, ffmpeg
+uv sync --extra validation
 uv run python scripts/fetch_popsign_samples.py hello please thankyou yes no bye --per-sign 6
-uv run python scripts/extract_landmarks.py data/popsign          # then evaluate_samples.py etc.
-uv run python scripts/make_fake_webcam.py                         # data/fake-webcam/*.y4m for npm run e2e
+uv run python scripts/extract_landmarks.py data/popsign
+uv run python scripts/make_fake_webcam.py
 ```
-
-`make_demo_clips.py` regenerates `frontend/public/signs` and `clips.json` for
-whatever is in `lessons.json` (it needs the clips fetched and extracted first).
-To add a lesson: put signs that `evaluate_samples.py` shows are reliable in
-`lessons.json`, add labels, run `make_demo_clips.py`, and run both test suites.
-
-## Manual testing with a real webcam
-
-A fake webcam proves the pipeline, but only real people prove the product.
-Before the demo, have each teammate run this in Chrome:
-
-1. Start both servers. Open the app, allow the camera, and start **First words**. The live view should show white hand skeletons on your hands.
-2. **Hello:** watch the demo, press _I'm ready_, sign HELLO. Expect "Nice signing!" within ~1–3 s and +10 XP.
-3. **Negative:** on _Please_, sign HELLO or wave randomly for 10 s. It must not pass. After "Time's up", Please comes up again.
-4. Hold one hand still in view: "Show the whole movement". Drop your hands: no scoring. Step out of frame or cover your face: framing hints.
-5. Dim the lights or sit with a window behind you: lighting hint.
-6. Sign with your **other** hand: it should still be accepted.
-7. Refresh mid-lesson: the dashboard shows _Pick up where you left off_ and resumes on the same sign.
-8. Stop the backend: banner and disabled start. Restart it and press Retry.
-9. Block the camera in site settings: explanation, then practice without camera (no XP).
-10. Finish the lesson: completion screen and XP on the dashboard. Replay it: half XP, no bonus.
-11. Note any sign that keeps failing for a teammate who is signing it like the demo. That's our real-world accuracy data.
-
-Not verifiable without real people and cameras: beginner (non-fluent) signing
-accuracy, real webcam frame rates (headless Chrome managed ~15–22 fps),
-lighting and skin-tone robustness (MediaPipe's job), two people in frame, and
-switching cameras.
-
-## Known limitations
-
-- **Calibration is on Deaf signers' PopSign clips.** Hearing beginners will
-  score lower; tune thresholds with consented webcam recordings (see team plan).
-  Some PopSign clips may also have been in the model's training data, so
-  offline accuracy is optimistic. The browser runs used non-demo signers.
-- **No component-level feedback** (handshape, location, movement). The model
-  can't provide it; DESIGN.md lists it as a non-goal. We show top guesses instead.
-- **Movement direction is weakly checked:** a sign done backwards may pass. The
-  motion gate rules out frozen hands.
-- **Two people in frame:** Holistic tracks one person and we can't choose
-  which. No camera picker yet; an unplugged camera recovers via Retry.
-- **Partial-sign windows:** the start of one sign can look like another (PLEASE
-  opens like HUNGRY). The 0.9 s first-check delay and margin rule mitigate it.
-- **No password recovery or federated login.** Lesson completion summaries and
-  personal lesson history remain device-local; account leaderboard XP is stored
-  separately. Recognition landmarks are supplied by the browser, so the server
-  validates predictions but cannot prevent replay of a recorded sign. _Reset
-  progress_ clears local data; account deletion removes server-side data.
-- **No dispute button or streaks.**
-- No text descriptions of signs: we only show authentic demonstrations rather
-  than writing unreviewed instructions. A Deaf reviewer sign-off is still
-  needed before anything goes public (DESIGN.md §13.6).
-- Desktop Chrome/Edge are the tested browsers. The legacy MediaPipe build is
-  heavy on phones; mobile layout works but wasn't tested on devices.
-- Setup gotchas: `frontend/.npmrc` sets `legacy-peer-deps` because npm 11
-  crashes on an optional peer cycle in Vite 8. Intel Macs have no LiteRT wheel
-  (use Linux, Windows or Apple Silicon). python.org Python on macOS lacks CA
-  certs; the scripts use `/etc/ssl/cert.pem` (override with `SSL_CERT_FILE`).
-
-## Suggested split for four developers
-
-Module boundaries were chosen so these can proceed in parallel with few conflicts:
-
-1. **ML and backend** (`backend/`). Record consented webcam attempts from
-   teammates and friends (landmarks only, via the same API), then recalibrate
-   with `calibrate_thresholds.py` and `simulate_live.py`. Try per-sign
-   thresholds and confusion-aware hints ("looks like MY: add the circular
-   motion"). Validate more of the 250 signs to grow the curriculum.
-2. **Camera and recognition UX** (`CameraView`, `useRecognizer`, `segmenter.ts`).
-   Camera picker and device-change handling, a "two people" warning from pose,
-   an fps readout with adaptive model complexity, MediaPipe in a Web Worker.
-   Keep `simulate_live.py` in sync with segmenter constants.
-3. **Game and lessons** (`lessonEngine.ts`, `progress.ts`, screens). Streaks
-   and daily goal, hearts, spaced-repetition review, a "dispute this result"
-   flag that's saved without changing the score, onboarding with a camera
-   pre-check.
-4. **Content, accessibility and demo** (`content/`, CSS, README). Deaf reviewer
-   sign-off on labels and clips, screen-reader and keyboard audit, mobile
-   polish, more lessons via `make_demo_clips.py`, demo script and recording,
-   single-host deployment (serve `frontend/dist` behind the API).
 
 ## Credits and licences
 
-- Sign demonstration clips and validation data: **PopSign ASL v1.0**, Thad
-  Starner et al., Georgia Institute of Technology and Deaf Professional Arts
-  Network, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Clips
-  were trimmed to the sign, scaled to 360×640 and re-encoded; each clip's
-  source file is listed in `frontend/src/content/clips.json`. Credited in the app footer.
-- Recognition model: [kaggle-asl-signs-1st-place](https://huggingface.co/sign/kaggle-asl-signs-1st-place)
-  by Hoyeol Sohn, MIT.
-- Landmarks: [MediaPipe Holistic](https://github.com/google/mediapipe), Apache-2.0.
-- Font: Nunito, SIL Open Font License.
+- **Sign videos and test data:** [PopSign ASL v1.0](https://signdata.cc.gatech.edu/view/datasets/popsign_v1_0/) by Thad Starner et al., Georgia Institute of Technology and the Deaf Professional Arts Network, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Clips were trimmed and re-encoded; sources are listed in `frontend/src/content/clips.json`.
+- **Recognition model:** [kaggle-asl-signs-1st-place](https://huggingface.co/sign/kaggle-asl-signs-1st-place) by Hoyeol Sohn, MIT.
+- **Landmarks:** [MediaPipe Holistic](https://github.com/google/mediapipe), Apache-2.0.
+- **Font:** Nunito, SIL Open Font License.
