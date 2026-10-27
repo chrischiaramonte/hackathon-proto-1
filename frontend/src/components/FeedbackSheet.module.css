@@ -58,6 +58,11 @@
   animation: pop 420ms cubic-bezier(0.2, 1.6, 0.4, 1) 80ms both;
 }
 
+/* On wide screens the text and XP pill are separate items in the row; phones stack them (below). */
+.body {
+  display: contents;
+}
+
 .text {
   flex: 1;
   min-width: 12rem;
@@ -110,6 +115,25 @@
     height: auto;
     min-height: calc(5.5rem + env(safe-area-inset-bottom));
     padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  /* The text and XP pill stack in one column beside the check circle, which centres on the whole column. */
+  .body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .badge {
+    flex: none;
+  }
+
+  .text {
+    flex: none;
+    min-width: 0;
   }
 
   .continue {

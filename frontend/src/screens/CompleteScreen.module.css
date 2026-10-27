@@ -198,7 +198,65 @@
 }
 
 @media (max-width: 480px) {
+  /* Room for the pinned action bar below the card. */
+  .page {
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  }
+
+  .card {
+    padding-inline: 1.25rem;
+  }
+
+  .trophy {
+    width: 72px;
+    height: 72px;
+    font-size: 2.3rem;
+  }
+
+  /* The three stats stay in one compact row instead of stacking into tall boxes. */
   .stats {
-    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .statLabel {
+    padding: 0.3rem 0.25rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .statBody {
+    min-height: 3.25rem;
+    padding: 0.5rem 0.25rem;
+  }
+
+  .statValue {
+    font-size: 1.15rem;
+    white-space: nowrap;
+  }
+
+  /* Practice again and Continue are pinned to the bottom, side by side. */
+  .actions {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 10;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    width: auto;
+    margin: 0;
+    padding: 1rem 1.25rem calc(1rem + env(safe-area-inset-bottom));
+    border-top: 2px solid var(--line);
+    background: var(--surface);
+  }
+
+  .actions button {
+    min-width: 0;
+    padding-inline: 0.5rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .statValue {
+    font-size: 1rem;
   }
 }
