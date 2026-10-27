@@ -4,7 +4,7 @@
 
 **Live demo:** [cosign-learning.vercel.app](https://cosign-learning.vercel.app)
 
-![cosign](banner.jpg)
+![cosign](banner.png)
 
 ## Quick start
 
