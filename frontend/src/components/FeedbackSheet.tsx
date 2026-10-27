@@ -25,21 +25,23 @@ export function FeedbackSheet({ tone, title, detail, xp, onContinue }: Props) {
         <div className={styles.badge} aria-hidden="true">
           {tone === 'success' ? <IconCheck /> : <IconClose />}
         </div>
-        <div className={styles.text}>
-          <p id={`${id}-title`} className={styles.title}>
-            {title}
-          </p>
-          {detail && (
-            <p id={`${id}-detail`} className={styles.detail}>
-              {detail}
+        <div className={styles.body}>
+          <div className={styles.text}>
+            <p id={`${id}-title`} className={styles.title}>
+              {title}
             </p>
-          )}
+            {detail && (
+              <p id={`${id}-detail`} className={styles.detail}>
+                {detail}
+              </p>
+            )}
+          </div>
+          {xp ? (
+            <span id={`${id}-xp`} className={styles.xp}>
+              <IconBolt /> +{xp} XP
+            </span>
+          ) : null}
         </div>
-        {xp ? (
-          <span id={`${id}-xp`} className={styles.xp}>
-            <IconBolt /> +{xp} XP
-          </span>
-        ) : null}
         <Button
           ref={buttonRef}
           variant={tone}

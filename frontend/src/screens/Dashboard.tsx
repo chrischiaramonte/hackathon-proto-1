@@ -11,7 +11,10 @@ import {
   IconBolt,
   IconCamera,
   IconCheck,
+  IconHand,
+  IconLogout,
   IconStar,
+  IconUsers,
 } from "../components/Icons";
 import { Logo } from "../components/Logo";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -27,9 +30,9 @@ import {
 } from "../lib/accountApi";
 
 type Tab = "learn" | "leaderboard";
-const TABS: { id: Tab; label: string }[] = [
-  { id: "learn", label: "Learn" },
-  { id: "leaderboard", label: "Leaderboard" },
+const TABS: { id: Tab; label: string; Icon: typeof IconHand }[] = [
+  { id: "learn", label: "Learn", Icon: IconHand },
+  { id: "leaderboard", label: "Leaderboard", Icon: IconUsers },
 ];
 
 /** Review needs a few learned signs to be worth it. */
@@ -154,59 +157,75 @@ export function Dashboard({
     <div className={styles.page}>
       <header className={styles.topbar}>
         <Logo />
-        <div
-          className={styles.tabs}
-          role="tablist"
-          aria-label="Dashboard"
-          onKeyDown={onTabKey}
-        >
-          {chip && (
+        <div className={styles.toolbar}>
+          <div
+            className={styles.tabs}
+            role="tablist"
+            aria-label="Dashboard"
+            onKeyDown={onTabKey}
+          >
+            {chip && (
+              <span
+                className={styles.tabChip}
+                data-animate={chip.animate || undefined}
+                style={{
+                  width: chip.width,
+                  transform: `translateX(${chip.left}px)`,
+                }}
+                aria-hidden="true"
+              />
+            )}
+            {TABS.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                ref={(el) => {
+                  tabRefs.current[id] = el;
+                }}
+                type="button"
+                role="tab"
+                id={`tab-${id}`}
+                aria-selected={tab === id}
+                aria-controls={`panel-${id}`}
+                tabIndex={tab === id ? 0 : -1}
+                className={styles.tab}
+                onClick={() => setTab(id)}
+              >
+                <Icon className={styles.tabIcon} />
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className={styles.stats}>
             <span
-              className={styles.tabChip}
-              data-animate={chip.animate || undefined}
-              style={{
-                width: chip.width,
-                transform: `translateX(${chip.left}px)`,
-              }}
-              aria-hidden="true"
-            />
-          )}
-          {TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              ref={(el) => {
-                tabRefs.current[id] = el;
-              }}
-              type="button"
-              role="tab"
-              id={`tab-${id}`}
-              aria-selected={tab === id}
-              aria-controls={`panel-${id}`}
-              tabIndex={tab === id ? 0 : -1}
-              className={styles.tab}
-              onClick={() => setTab(id)}
+              className={styles.stat}
+              title={
+                account ? "Server tracked leaderboard XP" : "XP on this device"
+              }
             >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className={styles.stats}>
-          <span
-            className={styles.stat}
-            title={
-              account ? "Server tracked leaderboard XP" : "XP on this device"
-            }
-          >
-            <IconBolt className={styles.bolt} />{" "}
-            {account ? account.xp : progress.xp} XP
-          </span>
-          <Button
-            variant="secondary"
-            onClick={account ? onLogout : onManageAccount}
-          >
-            {account ? "Logout" : "Sign in"}
-          </Button>
-          <ThemeToggle />
+              <IconBolt className={styles.bolt} />{" "}
+              {account ? account.xp : progress.xp} XP
+            </span>
+            <ThemeToggle />
+            {account ? (
+              <button
+                type="button"
+                className={styles.logout}
+                onClick={onLogout}
+                aria-label="Log out"
+                title="Log out"
+              >
+                <IconLogout />
+              </button>
+            ) : (
+              <Button
+                variant="secondary"
+                className={styles.signIn}
+                onClick={onManageAccount}
+              >
+                Sign in
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 

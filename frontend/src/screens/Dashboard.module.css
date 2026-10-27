@@ -19,10 +19,33 @@
   margin-bottom: 1.5rem;
 }
 
+/* On a wide screen the tabs and stats stay separate items in the top bar. */
+.toolbar {
+  display: contents;
+}
+
 .stats {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.logout {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.logout:hover {
+  color: var(--ink);
+  background: var(--surface-2);
 }
 
 /* Learn / Leaderboard: a segmented control; a raised chip slides under the selected tab. */
@@ -385,6 +408,91 @@
   font-size: 0.9rem;
   font-weight: 800;
   color: var(--ink);
+}
+
+/* The tab icons only show in the phone's bottom bar. */
+.tabIcon {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  /* Room for the fixed bottom tab bar. */
+  .page {
+    padding: 1rem 0.75rem calc(5.5rem + env(safe-area-inset-bottom));
+  }
+
+  /* One row: logo on the left, XP / account / theme on the right. */
+  .topbar {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Learn / Leaderboard move to a bottom tab bar, within thumb reach. */
+  .tabs {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem;
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
+    border-top: 2px solid var(--line);
+    border-radius: 0;
+    background: var(--surface);
+  }
+
+  .tabChip {
+    top: 6px;
+    bottom: calc(6px + env(safe-area-inset-bottom));
+    border-radius: var(--radius);
+    background: var(--brand-soft);
+    box-shadow: none;
+  }
+
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1rem;
+    min-height: 52px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .tab[aria-selected='true'] {
+    color: var(--brand-text);
+  }
+
+  .tabIcon {
+    display: block;
+    font-size: 1.4rem;
+  }
+
+  .stat {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .stats {
+    gap: 0.3rem;
+  }
+
+  .signIn {
+    min-height: 40px;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .logout,
+  .stats > :nth-child(2) {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
 }
 
 @media (max-width: 600px) {

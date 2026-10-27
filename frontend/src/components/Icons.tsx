@@ -82,6 +82,13 @@ export const IconArrowRight = (p: SVGProps<SVGSVGElement>) => (
   </Icon>
 );
 
+export const IconLogout = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M14 8V6.2A1.7 1.7 0 0 0 12.3 4.5H6.2A1.7 1.7 0 0 0 4.5 6.2v11.6A1.7 1.7 0 0 0 6.2 19.5h6.1A1.7 1.7 0 0 0 14 17.8V16" />
+    <path d="M10 12h9.5M16.5 8.5L20 12l-3.5 3.5" />
+  </Icon>
+);
+
 export const IconStar = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p} fill="currentColor" stroke="none">
     <path d="M12 2.8l2.8 5.8 6.3.8-4.6 4.4 1.2 6.3L12 17.1l-5.7 3 1.2-6.3L2.9 9.4l6.3-.8L12 2.8z" />

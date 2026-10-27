@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
 import { Button } from '../components/Button';
 import { CameraView } from '../components/CameraView';
-import { Countdown } from '../components/Countdown';
 import { FeedbackSheet } from '../components/FeedbackSheet';
-import { IconBolt, IconClose, IconHand } from '../components/Icons';
-import { ProgressBar } from '../components/ProgressBar';
+import { IconBolt, IconClose, IconHand, IconRefresh } from '../components/Icons';
 import { SignDemo } from '../components/SignDemo';
 import { signLabel, signs } from '../content';
 import { useRecognizer, type Recognizer } from '../hooks/useRecognizer';
 import { isServerReady, type RecognitionResult, type RecognitionStatus } from '../lib/api';
-import { answer, currentSign, isComplete, isReversePrompt, lessonProgress, type LessonState, type Outcome } from '../lib/lessonEngine';
+import { answer, currentSign, isComplete, isReversePrompt, type LessonState, type Outcome } from '../lib/lessonEngine';
 import { accountApi } from '../lib/accountApi';
 import { playCorrect, playWrong } from '../lib/sounds';
 import styles from './LessonScreen.module.css';
@@ -31,6 +29,15 @@ const RESULT_TEXT: Record<Exclude<RecognitionStatus, 'accepted'>, string> = {
 };
 
 const PRAISE = ['Nice signing!', 'You got it!', 'Great job!', 'Excellent!'];
+
+/** Matches the layout's single-column breakpoint, where the demo and camera share one flip card. */
+const NARROW = '(max-width: 760px)';
+const subscribeNarrow = (onChange: () => void) => {
+  const query = window.matchMedia(NARROW);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+};
+const isNarrow = () => window.matchMedia(NARROW).matches;
 
 /** What the model saw on the last attempt, if it was a different sign. */
 function missDetail(result: RecognitionResult | null, target: string): string {
@@ -54,12 +61,15 @@ interface Props {
   onComplete: (lesson: LessonState) => void;
 }
 
-export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Props) {
+export function LessonScreen({ lesson, onChange, onExit, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>({ name: 'learn' });
   const [server, setServer] = useState<'checking' | 'ok' | 'down'>('checking');
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraBlocked, setCameraBlocked] = useState(false);
   const [englishAnswer, setEnglishAnswer] = useState('');
+  // Flip card (narrow screens): the learner can turn it over to the camera before pressing "I'm ready".
+  const [userFlipped, setUserFlipped] = useState(false);
+  const narrow = useSyncExternalStore(subscribeNarrow, isNarrow, () => false);
   const readyRef = useRef<HTMLButtonElement>(null);
   const wordRef = useRef<HTMLHeadingElement>(null);
   const answerRef = useRef<HTMLInputElement>(null);
@@ -70,7 +80,19 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   const sign = signId ? signs[signId] : undefined;
   const practicing = phase.name === 'practice';
   const reverse = phase.name === 'feedback' ? phase.reverse : isReversePrompt(lesson);
-  const { done: completedQuestions, total } = lessonProgress(lesson);
+  // Signing questions start on the signer and turn to the camera when practice starts; typed
+  // questions are already practicing, so they stay on the signer until the learner flips to the answer box.
+  const flipEnabled = narrow;
+  const flipped = flipEnabled && (reverse ? userFlipped : practicing || userFlipped);
+  const canFlip = flipEnabled && (reverse ? practicing : phase.name === 'learn');
+  const toggleFlip = () => {
+    if (canFlip) setUserFlipped((f) => !f);
+  };
+  const onCardClick = (event: MouseEvent) => {
+    // The answer box and its label stay put; tapping anywhere else on the card turns it over.
+    if ((event.target as HTMLElement).closest('button, a, input, label')) return;
+    toggleFlip();
+  };
 
   const checkServer = useCallback(() => {
     setServer('checking');
@@ -91,9 +113,10 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   // dropping it on the page, so keyboard and screen reader users stay in place.
   useEffect(() => {
     if (phase.name !== 'practice') return;
-    // Typed questions put the cursor straight in the answer box.
+    // Typed questions put the cursor in the answer box, once it is the face showing.
+    if (reverse && flipEnabled && !flipped) return;
     (reverse ? answerRef : wordRef).current?.focus();
-  }, [phase.name, reverse, signId]);
+  }, [phase.name, reverse, signId, flipEnabled, flipped]);
 
   // Record the outcome right away, so a refresh can never lose it.
   const finish = useCallback(
@@ -147,6 +170,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
   const startPractice = () => {
     answered.current = false;
     setEnglishAnswer('');
+    setUserFlipped(!reverse);
     setPhase({ name: 'practice', startedAt: Date.now() });
   };
   const submitEnglish = () => {
@@ -162,7 +186,10 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
 
   const continueLesson = () => {
     if (isComplete(lesson)) onComplete(lesson);
-    else setPhase({ name: 'learn' });
+    else {
+      setUserFlipped(false);
+      setPhase({ name: 'learn' });
+    }
   };
 
   if (!sign) return null;
@@ -175,11 +202,6 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
         <button type="button" className={styles.exit} onClick={onExit} aria-label="Leave lesson (progress is saved)">
           <IconClose />
         </button>
-        <ProgressBar
-          value={completedQuestions}
-          max={total}
-          label={`${title}: ${completedQuestions} of ${total} questions complete`}
-        />
         <span className={styles.xp} title="XP earned in this lesson">
           <IconBolt /> {lesson.xp}
           <span className="visually-hidden"> XP earned in this lesson</span>
@@ -213,7 +235,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
           <p id="lesson-step" className={styles.eyebrow}>
             {reverse
               ? 'Your turn: type'
-              : phase.name === 'learn' ? (missedBefore ? 'Let’s try this one again' : 'Watch the sign') : 'Your turn: sign'}
+              : phase.name === 'learn' && !flipped ? (missedBefore ? 'Let’s try this one again' : 'Watch the sign') : 'Your turn: sign'}
           </p>
           {reverse ? (
             <h1 className={styles.word}>What does this sign mean?</h1>
@@ -225,8 +247,13 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
         </div>
 
         <div className={styles.panels}>
-          <SignDemo key={sign.id} sign={sign} compact={!reverse && phase.name !== 'learn'} />
+          <div className={`${styles.flip} ${flipEnabled ? styles.flipOn : ''}`} data-flipped={flipped || undefined}>
+            <div className={styles.flipInner} onClick={flipEnabled ? onCardClick : undefined}>
+              <div className={styles.front} inert={flipEnabled && flipped}>
+          <SignDemo key={sign.id} sign={sign} compact={!reverse && phase.name !== 'learn' && !flipEnabled} />
+              </div>
 
+              <div className={styles.back} inert={flipEnabled && !flipped}>
           <div className={styles.practice}>
             {reverse ? (
               <form
@@ -264,7 +291,7 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
                 {phase.name === 'learn' && (
                   <div className={styles.cameraVeil}>
                     <IconHand className={styles.veilIcon} />
-                    <p>Watch the demo, then press “I’m ready” and sign it here.</p>
+                    <p>{flipEnabled ? 'Press “I’m ready” and sign it here.' : 'Watch the demo, then press “I’m ready” and sign it here.'}</p>
                   </div>
                 )}
                 {practicing && (
@@ -279,9 +306,13 @@ export function LessonScreen({ lesson, title, onChange, onExit, onComplete }: Pr
                 <p>Sign along with the demonstration. When you’ve practiced it a few times, continue.</p>
               </div>
             )}
-
-            {!reverse && practicing && lesson.scored && (
-              <Countdown key={phase.startedAt} startedAt={phase.startedAt} durationMs={PRACTICE_MS} />
+          </div>
+              </div>
+            </div>
+            {canFlip && (
+              <button type="button" className={styles.flipHint} onClick={toggleFlip}>
+                <IconRefresh /> {flipped ? 'Tap the card to watch again' : reverse ? 'Tap the card to answer' : 'Tap the card to practice'}
+              </button>
             )}
           </div>
         </div>
